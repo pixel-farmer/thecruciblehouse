@@ -1,0 +1,24 @@
+{
+  "name": "the-crucible-house",
+  "version": "1.0.0",
+  "description": "The Crucible House Art Gallery Website",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server --port=3000 --open=/index.html",
+    "start": "live-server --port=3000 --open=/index.html",
+    "build": "node build.js",
+    "lint": "eslint script.js || true"
+  },
+  "keywords": [
+    "art",
+    "gallery",
+    "website"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "dependencies": {}
+}
+

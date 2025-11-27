@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lawn Walker | The Crucible House</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation Component -->
+    <nav class="navbar">
+    <div class="nav-container">
+        <div class="logo">
+            <a href="index.html">
+                <img src="CH logo300.jpg" alt="The Crucible House" class="logo-img">
+            </a>
+        </div>
+        <ul class="nav-menu">
+            <li><a href="index.html" class="nav-link">Home</a></li>
+            <li><a href="artist.html" class="nav-link">Artist</a></li>
+            <li><a href="about.html" class="nav-link">About</a></li>
+            <li><a href="contact.html" class="nav-link">Contact</a></li>
+            <li><a href="shop.html" class="nav-link">Shop</a></li>
+        </ul>
+        <div class="hamburger">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+</nav>
+
+
+
+    <!-- Artist Header -->
+    <section class="about" style="padding-top: 120px; padding-bottom: 60px;">
+        <div class="container">
+            <div class="about-content" style="margin-bottom: 40px;">
+                <div class="about-text">
+                    <h1 class="section-title" style="text-align: left; margin-bottom: 20px;">Lawn Walker</h1>
+                    <p style="font-size: 1.1rem; line-height: 1.8; color: var(--text-light);">
+                        Artist bio and description will go here. This section provides information about the artist's background, artistic practice, and inspiration.
+                    </p>
+                </div>
+                <div class="about-image">
+                    <img src="public/BoyBunny1024.JPG" alt="Lawn Walker" style="width: 100%; height: 500px; object-fit: cover;">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Artist Gallery -->
+    <section class="gallery">
+        <div class="container">
+            <h2 class="section-title">Artwork</h2>
+            <div class="gallery-grid">
+                <!-- Artwork 1 -->
+                <div class="gallery-item" data-category="artwork">
+                    <div class="gallery-image-placeholder">
+                        <span>Artwork 1</span>
+                    </div>
+                    <div class="gallery-overlay">
+                        <h3>Artwork Title</h3>
+                        <p>Medium • Year</p>
+                    </div>
+                </div>
+                <!-- Artwork 2 -->
+                <div class="gallery-item" data-category="artwork">
+                    <div class="gallery-image-placeholder">
+                        <span>Artwork 2</span>
+                    </div>
+                    <div class="gallery-overlay">
+                        <h3>Artwork Title</h3>
+                        <p>Medium • Year</p>
+                    </div>
+                </div>
+                <!-- Artwork 3 -->
+                <div class="gallery-item" data-category="artwork">
+                    <div class="gallery-image-placeholder">
+                        <span>Artwork 3</span>
+                    </div>
+                    <div class="gallery-overlay">
+                        <h3>Artwork Title</h3>
+                        <p>Medium • Year</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Component -->
+    <footer class="footer">
+    <div class="container">
+        <div class="footer-content">
+            <div class="footer-logo">
+                <img src="CH logo300x300.jpg" alt="The Crucible House" class="footer-logo-img">
+            </div>
+            <div class="footer-links">
+                <a href="index.html">Home</a>
+                <a href="artist.html">Artist</a>
+                <a href="about.html">About</a>
+                <a href="contact.html">Contact</a>
+                <a href="shop.html">Shop</a>
+            </div>
+            <div class="footer-social">
+                <a href="#" aria-label="Instagram">Instagram</a>
+                <a href="#" aria-label="Facebook">Facebook</a>
+                <a href="#" aria-label="Twitter">Twitter</a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2024 The Crucible House. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
+
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox" class="lightbox">
+        <span class="lightbox-close">&times;</span>
+        <div class="lightbox-content">
+            <img src="" alt="" id="lightbox-image">
+            <div class="lightbox-info">
+                <h3 id="lightbox-title"></h3>
+                <p id="lightbox-details"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
