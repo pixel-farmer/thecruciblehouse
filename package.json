@@ -1,24 +1,23 @@
 {
   "name": "the-crucible-house",
-  "version": "1.0.0",
-  "description": "The Crucible House Art Gallery Website",
-  "main": "index.html",
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "dev": "live-server --port=3000 --open=/index.html",
-    "start": "live-server --port=3000 --open=/index.html",
-    "build": "node build.js",
-    "lint": "eslint script.js || true"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
-  "keywords": [
-    "art",
-    "gallery",
-    "website"
-  ],
-  "author": "",
-  "license": "MIT",
+  "dependencies": {
+    "framer-motion": "^12.23.24",
+    "next": "15.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
-    "live-server": "^1.2.2"
-  },
-  "dependencies": {}
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.7",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5"
+  }
 }
-

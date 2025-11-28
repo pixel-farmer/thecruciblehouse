@@ -1,35 +1,33 @@
-# Dependencies
-node_modules/
-# Keep package-lock.json for deployments
-# package-lock.json
-yarn.lock
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
 
-# Logs
-logs
-*.log
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
+# local env files
+.env*.local
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# vercel
+.vercel
 
-# Build outputs
-dist/
-build/
-*.min.js
-*.min.css
-
-# Environment variables
-.env
-.env.local
-
+# typescript
+*.tsbuildinfo
+next-env.d.ts
