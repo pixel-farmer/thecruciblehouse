@@ -1,0 +1,12 @@
+module.exports = {
+  rewrites: [
+    {
+      source: '/(.*\\.(html|css|js|jpg|jpeg|png|gif|svg|ico|woff|woff2|ttf|eot|json))',
+      destination: '/$1',
+    },
+    {
+      source: '/(.*)',
+      destination: '/index.html',
+    },
+  ],
+};
