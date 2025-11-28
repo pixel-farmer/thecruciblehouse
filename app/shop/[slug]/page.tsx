@@ -6,12 +6,14 @@ import { notFound } from 'next/navigation';
 import { motion } from 'framer-motion';
 import styles from '../../styles/ArtworkDetail.module.css';
 import ScrollAnimation from '../../components/ScrollAnimation';
+import BuyButton from '../../components/BuyButton';
 
 const artworks: Record<string, any> = {
   'artwork-1': {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: '$2,500',
+    priceInCents: 250000, // $2,500 in cents
     size: '24" × 36"',
     medium: 'Oil on Canvas',
     year: '2024',
@@ -22,6 +24,7 @@ const artworks: Record<string, any> = {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: 'Price',
+    priceInCents: null, // No price set yet
     size: '24" × 36"',
     medium: 'Medium',
     year: 'Year',
@@ -32,6 +35,7 @@ const artworks: Record<string, any> = {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: 'Price',
+    priceInCents: null,
     size: '24" × 36"',
     medium: 'Medium',
     year: 'Year',
@@ -42,6 +46,7 @@ const artworks: Record<string, any> = {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: 'Price',
+    priceInCents: null,
     size: '24" × 36"',
     medium: 'Medium',
     year: 'Year',
@@ -52,6 +57,7 @@ const artworks: Record<string, any> = {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: 'Price',
+    priceInCents: null,
     size: '24" × 36"',
     medium: 'Medium',
     year: 'Year',
@@ -62,6 +68,7 @@ const artworks: Record<string, any> = {
     title: 'Artwork Title',
     artist: 'Artist Name',
     price: 'Price',
+    priceInCents: null,
     size: '24" × 36"',
     medium: 'Medium',
     year: 'Year',
@@ -113,7 +120,12 @@ export default function ArtworkDetailPage({ params }: { params: Promise<{ slug: 
                 <p>{artwork.description}</p>
               </div>
 
-              <button className={styles.buyButton}>Buy Now</button>
+              <BuyButton
+                artworkId={slug}
+                artworkTitle={artwork.title}
+                priceInCents={artwork.priceInCents || 0}
+                disabled={!artwork.priceInCents}
+              />
             </div>
 
             <div className={styles.artworkImageContainer}>

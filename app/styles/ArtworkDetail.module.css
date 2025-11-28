@@ -101,9 +101,14 @@
   transition: all 0.3s ease;
 }
 
-.buyButton:hover {
+.buyButton:hover:not(:disabled) {
   background-color: transparent;
   color: var(--primary-color);
+}
+
+.buyButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .artworkImageContainer {
