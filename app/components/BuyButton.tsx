@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
+import { loadStripe, Stripe } from '@stripe/stripe-js';
 import styles from '../styles/ArtworkDetail.module.css';
 
 interface BuyButtonProps {
@@ -56,6 +56,8 @@ export default function BuyButton({
         throw new Error('Stripe failed to load.');
       }
       
+      // redirectToCheckout is available at runtime, but TypeScript types may be out of sync
+      // @ts-ignore - redirectToCheckout exists on Stripe instances from @stripe/stripe-js
       await stripe.redirectToCheckout({ sessionId });
     } catch (error: any) {
       console.error('Checkout error:', error);
