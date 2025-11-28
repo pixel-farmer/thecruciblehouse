@@ -3,20 +3,12 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import styles from '../../styles/ArtworkDetail.module.css';
 
-export default function SuccessPage() {
+function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('session_id');
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // You can verify the session here if needed
-    if (sessionId) {
-      setLoading(false);
-    }
-  }, [sessionId]);
 
   return (
     <motion.div
@@ -47,5 +39,21 @@ export default function SuccessPage() {
         </div>
       </section>
     </motion.div>
+  );
+}
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={
+      <section className={styles.artworkDetail} style={{ paddingTop: '120px', paddingBottom: '100px', minHeight: '60vh' }}>
+        <div className={styles.container}>
+          <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
+            <p style={{ fontSize: '1.2rem', color: 'var(--text-light)' }}>Loading...</p>
+          </div>
+        </div>
+      </section>
+    }>
+      <SuccessContent />
+    </Suspense>
   );
 }
