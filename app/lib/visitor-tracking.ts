@@ -123,6 +123,8 @@ export async function getVisitors(): Promise<Visitor[]> {
 
 export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Promise<void> {
   try {
+    console.log(`[addVisitor] Starting to add visitor for page: ${visitor.page}`);
+    
     // CRITICAL: Always read existing visitors first to preserve all data
     const existingVisitors = await getVisitors();
     console.log(`[addVisitor] Current visitor count before adding: ${existingVisitors.length}`);
@@ -133,12 +135,20 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
       timestamp: new Date().toISOString(),
     };
 
+    console.log(`[addVisitor] New visitor created:`, {
+      id: newVisitor.id,
+      page: newVisitor.page,
+      timestamp: newVisitor.timestamp,
+    });
+
     // Add new visitor to existing list
     const updatedVisitors = [...existingVisitors, newVisitor];
+    console.log(`[addVisitor] Updated visitor count: ${updatedVisitors.length}`);
     
     // Keep only last 10,000 visitors to prevent storage from growing too large
     const trimmedVisitors = updatedVisitors.slice(-10000);
     const jsonData = JSON.stringify(trimmedVisitors, null, 2);
+    console.log(`[addVisitor] Prepared ${trimmedVisitors.length} visitors for storage (${jsonData.length} bytes)`);
 
     // Use Vercel Blob if available (production)
     if (useBlob()) {

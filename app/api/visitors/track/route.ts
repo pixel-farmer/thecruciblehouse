@@ -105,20 +105,34 @@ export async function POST(request: NextRequest) {
     // Get geographic location from IP
     const location = await getLocationFromIP(ip);
 
-    console.log('Tracking visit:', { page, ip, hasLocation: !!location.country });
-
-    await addVisitor({
-      page: page || 'unknown',
-      ip: ip || 'unknown',
-      userAgent,
-      referer,
-      country: location.country,
-      region: location.region,
-      city: location.city,
+    console.log('[visitors/track] Tracking visit:', { 
+      page, 
+      ip, 
+      hasLocation: !!location.country,
+      userAgent: userAgent.substring(0, 50) + '...',
     });
 
-    console.log('Visitor tracked successfully');
-    return NextResponse.json({ success: true });
+    try {
+      await addVisitor({
+        page: page || 'unknown',
+        ip: ip || 'unknown',
+        userAgent,
+        referer,
+        country: location.country,
+        region: location.region,
+        city: location.city,
+      });
+      console.log('[visitors/track] Visitor tracked successfully');
+      return NextResponse.json({ success: true });
+    } catch (addError: any) {
+      console.error('[visitors/track] Error in addVisitor:', addError);
+      console.error('[visitors/track] Error details:', {
+        message: addError?.message,
+        stack: addError?.stack,
+      });
+      // Still return success to not break the user experience
+      return NextResponse.json({ success: false, error: 'Failed to save visitor' }, { status: 500 });
+    }
   } catch (error) {
     console.error('Visitor tracking error:', error);
     // Don't fail the request if tracking fails

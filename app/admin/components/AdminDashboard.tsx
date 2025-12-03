@@ -73,11 +73,23 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/admin/login');
-      router.refresh();
+      const response = await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include', // Ensure cookies are sent
+      });
+      
+      if (response.ok) {
+        // Force a hard redirect to clear any cached state
+        window.location.href = '/admin/login';
+      } else {
+        console.error('Logout failed:', response.status);
+        // Still redirect even if API call fails
+        window.location.href = '/admin/login';
+      }
     } catch (err) {
       console.error('Logout error:', err);
+      // Still redirect even if there's an error
+      window.location.href = '/admin/login';
     }
   };
 
