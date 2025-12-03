@@ -43,8 +43,6 @@ export async function getVisitors(): Promise<Visitor[]> {
   // Use Vercel Blob if available (production)
   if (useBlob()) {
     try {
-      // Try multiple approaches to find the blob
-      
       // Approach 1: Use cached URL if available
       if (cachedBlobUrl) {
         try {
@@ -52,60 +50,57 @@ export async function getVisitors(): Promise<Visitor[]> {
           if (response.ok) {
             const text = await response.text();
             const data = JSON.parse(text);
-            if (Array.isArray(data) && data.length > 0) {
+            if (Array.isArray(data)) {
+              console.log(`Loaded ${data.length} visitors from cached blob URL`);
               return data;
             }
           }
         } catch (error) {
           // Cached URL might be stale, continue to other approaches
           console.log('Cached blob URL failed, trying other methods...');
+          cachedBlobUrl = null; // Clear stale cache
         }
       }
       
-      // Approach 2: List all blobs and find exact match
+      // Approach 2: List ALL blobs and find exact match by pathname
       try {
-        const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
-        const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
+        // List all blobs (no prefix) to ensure we find it
+        const { blobs } = await list();
+        console.log(`Found ${blobs.length} total blobs in store`);
+        
+        // First, try exact match
+        let blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
+        
+        // If not found, try to find any blob with visitor-related name
+        if (!blob) {
+          blob = blobs.find(b => 
+            b.pathname.includes('visitor') || 
+            b.pathname.includes('visitors') ||
+            b.pathname.endsWith('.json')
+          );
+        }
         
         if (blob) {
+          console.log(`Found blob: ${blob.pathname} (${blob.size} bytes)`);
           cachedBlobUrl = blob.url;
           const response = await fetch(blob.url);
           if (response.ok) {
             const text = await response.text();
             const data = JSON.parse(text);
             if (Array.isArray(data)) {
+              console.log(`Loaded ${data.length} visitors from blob: ${blob.pathname}`);
+              // If we found a blob with a different name, update our key to match
+              if (blob.pathname !== VISITORS_BLOB_KEY) {
+                console.log(`Warning: Using blob with different name: ${blob.pathname}`);
+              }
               return data;
             }
           }
+        } else {
+          console.log('No visitor blob found in store');
         }
       } catch (error) {
-        console.log('Error listing blobs:', error);
-      }
-      
-      // Approach 3: Try listing all blobs to find any visitor-related data
-      try {
-        const { blobs } = await list({ prefix: 'visitor' });
-        // Look for any blob that might contain visitor data
-        for (const blob of blobs) {
-          if (blob.pathname.includes('visitor') || blob.pathname.includes('visitors')) {
-            try {
-              const response = await fetch(blob.url);
-              if (response.ok) {
-                const text = await response.text();
-                const data = JSON.parse(text);
-                if (Array.isArray(data) && data.length > 0) {
-                  console.log(`Found visitor data in blob: ${blob.pathname}`);
-                  cachedBlobUrl = blob.url;
-                  return data;
-                }
-              }
-            } catch (error) {
-              // Continue to next blob
-            }
-          }
-        }
-      } catch (error) {
-        console.log('Error searching for visitor blobs:', error);
+        console.error('Error listing blobs:', error);
       }
       
       return [];
@@ -134,33 +129,45 @@ export async function getVisitors(): Promise<Visitor[]> {
 
 export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Promise<void> {
   try {
-    const visitors = await getVisitors();
+    // CRITICAL: Always read existing visitors first to preserve all data
+    const existingVisitors = await getVisitors();
+    console.log(`[addVisitor] Current visitor count before adding: ${existingVisitors.length}`);
+    
     const newVisitor: Visitor = {
       ...visitor,
       id: `visitor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
     };
 
-    visitors.push(newVisitor);
+    // Add new visitor to existing list
+    const updatedVisitors = [...existingVisitors, newVisitor];
     
     // Keep only last 10,000 visitors to prevent storage from growing too large
-    const trimmedVisitors = visitors.slice(-10000);
+    const trimmedVisitors = updatedVisitors.slice(-10000);
     const jsonData = JSON.stringify(trimmedVisitors, null, 2);
 
     // Use Vercel Blob if available (production)
     if (useBlob()) {
       try {
-        // Use put with the same key - this will overwrite the existing blob atomically
-        // No need to delete first, which prevents data loss if upload fails
+        // CRITICAL: Use put with addRandomSuffix: false to ensure we always use the same key
+        // This ensures the blob persists across deployments
+        // The put operation will atomically overwrite the existing blob
+        console.log(`[addVisitor] Writing ${trimmedVisitors.length} visitors to blob (key: ${VISITORS_BLOB_KEY})`);
         const blob = await put(VISITORS_BLOB_KEY, jsonData, {
           contentType: 'application/json',
           access: 'public',
-          addRandomSuffix: false, // Use the exact key to overwrite
+          addRandomSuffix: false, // CRITICAL: Must be false to use exact key and persist across deployments
         });
         cachedBlobUrl = blob.url;
+        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors)`);
         return;
-      } catch (error) {
-        console.error('Error writing to Blob:', error);
+      } catch (error: any) {
+        console.error('[addVisitor] Error writing to Blob:', error);
+        console.error('[addVisitor] Error details:', {
+          message: error?.message,
+          name: error?.name,
+          code: error?.code,
+        });
         // Fall through to file system if Blob fails
       }
     }
@@ -210,6 +217,49 @@ export async function getVisitorStats() {
       pages: {},
       recent: [],
     };
+  }
+}
+
+/**
+ * Recovery function to find and restore visitor data from any blob in the store
+ * This can be called manually via the /api/visitors/recover endpoint
+ */
+export async function recoverVisitorData(): Promise<{ pathname: string; size: number; visitorsCount: number; data: Visitor[] } | null> {
+  if (!useBlob()) {
+    return null;
+  }
+
+  try {
+    const { blobs } = await list();
+    console.log(`Scanning ${blobs.length} blobs for visitor data...`);
+
+    // Try to find any blob that contains visitor data
+    for (const blob of blobs) {
+      try {
+        const response = await fetch(blob.url);
+        if (response.ok) {
+          const text = await response.text();
+          const data = JSON.parse(text);
+          if (Array.isArray(data) && data.length > 0 && data.every(item => typeof item === 'object' && 'id' in item && 'timestamp' in item)) {
+            console.log(`Found visitor data in blob: ${blob.pathname} (${data.length} visitors)`);
+            cachedBlobUrl = blob.url;
+            return {
+              pathname: blob.pathname,
+              size: blob.size,
+              visitorsCount: data.length,
+              data: data,
+            };
+          }
+        }
+      } catch (error) {
+        // Continue to next blob
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error recovering visitor data:', error);
+    return null;
   }
 }
 
