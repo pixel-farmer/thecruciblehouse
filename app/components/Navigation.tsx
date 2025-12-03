@@ -15,7 +15,6 @@ export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -103,18 +102,11 @@ export default function Navigation() {
     };
   }, [isDropdownOpen]);
 
-  const handleLogout = async () => {
-    // Set flags immediately to prevent any UI updates
+  const handleLogout = () => {
+    // Set ref flag immediately (doesn't trigger re-render)
     isLoggingOutRef.current = true;
-    setIsLoggingOut(true);
-    setIsDropdownOpen(false);
     
-    // Sign out from Supabase first (but don't wait for it to complete)
-    supabase.auth.signOut({ scope: 'global' }).catch(() => {
-      // Ignore errors
-    });
-    
-    // Clear localStorage synchronously
+    // Clear localStorage synchronously BEFORE any state updates
     if (typeof window !== 'undefined') {
       try {
         // Clear all localStorage items that might contain Supabase data
@@ -148,9 +140,15 @@ export default function Navigation() {
         // Ignore errors
       }
       
-      // Redirect immediately - use href instead of replace
+      // Redirect IMMEDIATELY - before any React state updates
+      // This prevents any UI flicker
       window.location.href = '/?logout=' + Date.now();
     }
+    
+    // Do async cleanup in background (won't affect redirect)
+    supabase.auth.signOut({ scope: 'global' }).catch(() => {
+      // Ignore errors - we're already redirecting
+    });
   };
 
   const navLinks = [
@@ -188,7 +186,7 @@ export default function Navigation() {
               </Link>
             </li>
           ))}
-          {isLoggedIn && !isLoggingOut ? (
+          {isLoggedIn ? (
             <>
               <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
                 {/* Profile Picture with Dropdown */}
