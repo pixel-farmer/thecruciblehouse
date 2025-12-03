@@ -18,6 +18,7 @@ export default function Footer() {
             <Link href="/artist">Artist</Link>
             <Link href="/commissions">Commissions</Link>
             <Link href="/community">Community</Link>
+            <Link href="/resources">Resources</Link>
             <Link href="/shop">Shop</Link>
           </div>
           <div className={styles.footerSocial}>
