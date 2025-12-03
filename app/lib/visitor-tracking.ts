@@ -24,7 +24,19 @@ let cachedBlobUrl: string | null = null;
 
 // Check if we're using Vercel Blob (production) or file system (local dev)
 function useBlob(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+  const hasToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+  const isVercel = !!process.env.VERCEL; // Vercel sets this automatically
+  
+  // Always use blob on Vercel if token is available
+  // On local dev, use blob if token is set, otherwise use filesystem
+  if (isVercel) {
+    if (!hasToken) {
+      console.warn('[visitor-tracking] WARNING: Running on Vercel but BLOB_READ_WRITE_TOKEN is not set!');
+    }
+    return hasToken; // On Vercel, must use blob (filesystem is read-only)
+  }
+  
+  return hasToken; // Local dev: use blob if token is set
 }
 
 async function ensureDataDir() {
@@ -151,7 +163,12 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
     console.log(`[addVisitor] Prepared ${trimmedVisitors.length} visitors for storage (${jsonData.length} bytes)`);
 
     // Use Vercel Blob if available (production)
-    if (useBlob()) {
+    const shouldUseBlob = useBlob();
+    const isVercel = !!process.env.VERCEL;
+    
+    console.log(`[addVisitor] Storage check: useBlob=${shouldUseBlob}, isVercel=${isVercel}, hasToken=${!!process.env.BLOB_READ_WRITE_TOKEN}`);
+    
+    if (shouldUseBlob) {
       try {
         // CRITICAL: Use put with addRandomSuffix: false to ensure we always use the same key
         // This ensures the blob persists across deployments
@@ -178,17 +195,37 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
           message: error?.message,
           name: error?.name,
           code: error?.code,
+          stack: error?.stack,
         });
-        // Fall through to file system if Blob fails
+        
+        // On Vercel, we MUST use blob - don't fall through to filesystem
+        if (isVercel) {
+          console.error('[addVisitor] CRITICAL: Blob write failed on Vercel. Cannot use filesystem fallback.');
+          throw error; // Re-throw so it's logged properly
+        }
+        // Fall through to file system only on local dev
       }
+    } else if (isVercel) {
+      // On Vercel but blob token not set - this is an error
+      console.error('[addVisitor] CRITICAL ERROR: Running on Vercel but BLOB_READ_WRITE_TOKEN is not set!');
+      console.error('[addVisitor] Cannot write to filesystem on Vercel. Please set BLOB_READ_WRITE_TOKEN environment variable.');
+      throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required on Vercel. Please configure it in your Vercel project settings.');
     }
 
-    // Fallback to file system (local development)
-    await ensureDataDir();
-    await writeFile(VISITORS_FILE, jsonData, 'utf-8');
+    // Fallback to file system (local development only)
+    // On Vercel, filesystem is read-only, so skip this
+    if (!process.env.VERCEL) {
+      await ensureDataDir();
+      await writeFile(VISITORS_FILE, jsonData, 'utf-8');
+      console.log(`[addVisitor] Wrote ${trimmedVisitors.length} visitors to file system`);
+    } else {
+      console.error('[addVisitor] ERROR: Cannot write to filesystem on Vercel. BLOB_READ_WRITE_TOKEN must be set!');
+      throw new Error('Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.');
+    }
   } catch (error) {
-    console.error('Error adding visitor:', error);
+    console.error('[addVisitor] Error adding visitor:', error);
     // Don't throw - allow site to function even if tracking fails
+    // But log the error so we can see it in Vercel logs
   }
 }
 
