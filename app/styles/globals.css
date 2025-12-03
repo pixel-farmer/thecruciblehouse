@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
 
 /* Reset and Base Styles */
@@ -29,4 +33,37 @@ body {
   color: var(--text-dark);
   line-height: 1.6;
   overflow-x: hidden;
+}
+
+/* Global form field styles */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+textarea,
+select {
+  min-height: 38px;
+  padding-left: 10px !important;
+}
+
+button[type="submit"],
+button[type="button"],
+input[type="submit"],
+input[type="button"] {
+  min-height: 38px;
+}
+
+/* Global form element spacing */
+form > *:not(:last-child) {
+  margin-bottom: 20px;
+}
+
+form > div:not(:last-child) {
+  margin-bottom: 20px;
 }

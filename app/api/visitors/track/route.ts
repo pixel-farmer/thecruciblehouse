@@ -39,9 +39,60 @@ async function getLocationFromIP(ip: string) {
   }
 }
 
+// List of suspicious paths commonly used by bots/scanners
+const SUSPICIOUS_PATTERNS = [
+  /^\/cmd/i,
+  /^\/cgi-bin/i,
+  /^\/wp-admin/i,
+  /^\/wp-content/i,
+  /^\/wp-includes/i,
+  /^\/phpmyadmin/i,
+  /^\/adminer/i,
+  /^\/\.env/i,
+  /^\/\.git/i,
+  /^\/xmlrpc/i,
+  /^\/readme/i,
+  /^\/license/i,
+  /^\/test/i,
+  /^\/tmp/i,
+  /^\/backup/i,
+  /^\/config/i,
+  /^\/database/i,
+  /^\/db/i,
+  /^\/sql/i,
+  /^\/shell/i,
+  /^\/eval/i,
+  /^\/exec/i,
+  /^\/system/i,
+];
+
+function isSuspiciousPath(path: string): boolean {
+  if (!path || path === 'unknown') return false;
+  
+  // Check against suspicious patterns
+  if (SUSPICIOUS_PATTERNS.some(pattern => pattern.test(path))) {
+    return true;
+  }
+  
+  // Check for suspicious keywords in path
+  const suspiciousKeywords = [
+    'cmd', 'exec', 'shell', 'eval', 'system', 'admin', 'config',
+    'backup', 'db', 'sql', 'php', 'asp', 'jsp', 'cgi', 'bin',
+  ];
+  
+  const lowerPath = path.toLowerCase();
+  return suspiciousKeywords.some(keyword => lowerPath.includes(keyword));
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { page } = await request.json();
+    
+    // Skip tracking for suspicious paths (bot/scanner requests)
+    if (isSuspiciousPath(page)) {
+      console.log('Skipping tracking for suspicious path:', page);
+      return NextResponse.json({ success: true, skipped: true });
+    }
     
     // Get client IP
     const forwarded = request.headers.get('x-forwarded-for');
