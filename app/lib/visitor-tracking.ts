@@ -43,30 +43,12 @@ export async function getVisitors(): Promise<Visitor[]> {
   // Use Vercel Blob if available (production)
   if (useBlob()) {
     try {
-      // Approach 1: Use cached URL if available
-      if (cachedBlobUrl) {
-        try {
-          const response = await fetch(cachedBlobUrl);
-          if (response.ok) {
-            const text = await response.text();
-            const data = JSON.parse(text);
-            if (Array.isArray(data)) {
-              console.log(`Loaded ${data.length} visitors from cached blob URL`);
-              return data;
-            }
-          }
-        } catch (error) {
-          // Cached URL might be stale, continue to other approaches
-          console.log('Cached blob URL failed, trying other methods...');
-          cachedBlobUrl = null; // Clear stale cache
-        }
-      }
-      
-      // Approach 2: List ALL blobs and find exact match by pathname
+      // Always list blobs to get the latest version (don't rely on cache in serverless)
+      // This ensures we get the most up-to-date data even if multiple function instances are running
       try {
         // List all blobs (no prefix) to ensure we find it
         const { blobs } = await list();
-        console.log(`Found ${blobs.length} total blobs in store`);
+        console.log(`[getVisitors] Found ${blobs.length} total blobs in store`);
         
         // First, try exact match
         let blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
@@ -81,32 +63,44 @@ export async function getVisitors(): Promise<Visitor[]> {
         }
         
         if (blob) {
-          console.log(`Found blob: ${blob.pathname} (${blob.size} bytes)`);
-          cachedBlobUrl = blob.url;
-          const response = await fetch(blob.url);
+          console.log(`[getVisitors] Found blob: ${blob.pathname} (${blob.size} bytes, uploaded: ${blob.uploadedAt})`);
+          
+          // Add cache-busting query parameter to ensure we get the latest version
+          // The uploadedAt timestamp helps us verify we're getting fresh data
+          const urlWithCacheBust = `${blob.url}?t=${Date.now()}`;
+          cachedBlobUrl = blob.url; // Update cache for future use
+          
+          const response = await fetch(urlWithCacheBust, {
+            cache: 'no-store', // Disable caching
+          });
+          
           if (response.ok) {
             const text = await response.text();
             const data = JSON.parse(text);
             if (Array.isArray(data)) {
-              console.log(`Loaded ${data.length} visitors from blob: ${blob.pathname}`);
-              // If we found a blob with a different name, update our key to match
+              console.log(`[getVisitors] Loaded ${data.length} visitors from blob: ${blob.pathname}`);
+              // If we found a blob with a different name, log a warning
               if (blob.pathname !== VISITORS_BLOB_KEY) {
-                console.log(`Warning: Using blob with different name: ${blob.pathname}`);
+                console.log(`[getVisitors] Warning: Using blob with different name: ${blob.pathname}`);
               }
               return data;
+            } else {
+              console.error(`[getVisitors] Blob data is not an array:`, typeof data);
             }
+          } else {
+            console.error(`[getVisitors] Failed to fetch blob: ${response.status} ${response.statusText}`);
           }
         } else {
-          console.log('No visitor blob found in store');
+          console.log('[getVisitors] No visitor blob found in store');
         }
       } catch (error) {
-        console.error('Error listing blobs:', error);
+        console.error('[getVisitors] Error listing blobs:', error);
       }
       
       return [];
     } catch (error: any) {
       // If blob doesn't exist or other error, return empty array
-      console.error('Error reading visitors from Blob:', error);
+      console.error('[getVisitors] Error reading visitors from Blob:', error);
       return [];
     }
   }
@@ -158,8 +152,15 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
           access: 'public',
           addRandomSuffix: false, // CRITICAL: Must be false to use exact key and persist across deployments
         });
+        
+        // Update cache with new URL
         cachedBlobUrl = blob.url;
-        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors)`);
+        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors, uploaded: ${blob.uploadedAt})`);
+        
+        // Small delay to ensure blob is fully propagated (CDN cache might take a moment)
+        // This is optional but helps ensure consistency
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         return;
       } catch (error: any) {
         console.error('[addVisitor] Error writing to Blob:', error);

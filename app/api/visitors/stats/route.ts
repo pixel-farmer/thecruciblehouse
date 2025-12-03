@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Force fresh data by calling getVisitorStats (which always lists blobs)
     const stats = await getVisitorStats();
     
     // Log stats for debugging
@@ -24,10 +25,18 @@ export async function GET(request: NextRequest) {
       last30Days: stats.last30Days,
       pagesCount: Object.keys(stats.pages).length,
       recentCount: stats.recent.length,
+      timestamp: new Date().toISOString(),
     });
     
     // Always return stats, even if empty (handles serverless read-only filesystem)
-    return NextResponse.json(stats);
+    // Add cache headers to prevent client-side caching
+    return NextResponse.json(stats, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error('Error fetching visitor stats:', error);
     
