@@ -114,5 +114,16 @@
   display: flex;
   align-items: center;
 }
+
+.navMenu li.authButton {
+  transition: none !important;
+}
+
+/* Reserve space for auth section to prevent layout shift */
+.navMenu li:last-child {
+  min-width: 200px;
+  display: flex;
+  justify-content: flex-end;
+}
 }
 
