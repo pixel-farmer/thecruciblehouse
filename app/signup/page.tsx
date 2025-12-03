@@ -12,6 +12,7 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,20 +26,26 @@ export default function SignUpPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) {
-        setMessage(error.message);
+        setMessage(error.message || 'Failed to sign up. Please check your connection and try again.');
+        console.error('Sign up error:', error);
+        setSignupSuccess(false);
       } else {
-        setMessage('Sign up successful! Redirecting...');
-        router.push('/');
-        router.refresh();
+        setSignupSuccess(true);
+        setMessage('SUCCESS! Please check your email inbox (and spam folder) for a confirmation link. You must click the link to verify your account before you can sign in.');
+        // Clear form fields
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
       }
-    } catch (err) {
-      setMessage('An unexpected error occurred');
+    } catch (err: any) {
+      console.error('Sign up exception:', err);
+      setMessage(err.message || 'Failed to connect to server. Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -49,7 +56,39 @@ export default function SignUpPage() {
       <div className="bg-white rounded-lg shadow-md p-8" style={{ width: '100%', maxWidth: '400px' }}>
         <h1 className="text-center mb-12" style={{ color: '#2c2c2c', fontFamily: 'var(--font-inter)', fontSize: '1.6rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>SIGN UP</h1>
         
-        <form onSubmit={handleSubmit} className="space-y-8">
+        {signupSuccess ? (
+          <div className="space-y-6">
+            <div
+              className="rounded-lg bg-green-100 border-2 border-green-500"
+              style={{
+                fontSize: '1rem',
+                fontWeight: 500,
+                lineHeight: '1.6',
+                color: 'var(--text-light)',
+                padding: '10px',
+                borderRadius: '0.75rem',
+              }}
+            >
+              <div style={{ marginBottom: '10px', fontWeight: 600, fontSize: '1.1rem' }}>
+                ✓ Account Created Successfully!
+              </div>
+              {message}
+            </div>
+            <div className="text-center">
+              <p className="mb-4" style={{ color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                Once you've verified your email, you can sign in.
+              </p>
+              <Link 
+                href="/login" 
+                className="underline" 
+                style={{ color: '#ff6622', fontFamily: 'var(--font-inter)' }}
+              >
+                Go to Sign In
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-8">
           <div>
             <label htmlFor="email" className="block mb-3" style={{ fontSize: '0.95rem', fontWeight: 400, color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
               Email address
@@ -100,12 +139,25 @@ export default function SignUpPage() {
 
           {message && (
             <div
-              className={`p-3 rounded-lg text-sm ${
-                message.includes('successful')
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-red-100 text-red-700'
+              className={`rounded-lg ${
+                message.includes('SUCCESS') || message.includes('successful')
+                  ? 'bg-green-100 border-2 border-green-500'
+                  : 'bg-red-100 border-2 border-red-500'
               }`}
+              style={{
+                fontSize: message.includes('SUCCESS') ? '1rem' : '0.875rem',
+                fontWeight: message.includes('SUCCESS') ? 500 : 400,
+                lineHeight: '1.6',
+                color: 'var(--text-light)',
+                padding: '10px',
+                borderRadius: '0.75rem',
+              }}
             >
+              {message.includes('SUCCESS') && (
+                <div style={{ marginBottom: '10px', fontWeight: 600, fontSize: '1.1rem' }}>
+                  ✓ Account Created Successfully!
+                </div>
+              )}
               {message}
             </div>
           )}
@@ -143,6 +195,7 @@ export default function SignUpPage() {
             </Link>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
