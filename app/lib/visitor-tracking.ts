@@ -155,7 +155,7 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
         
         // Update cache with new URL
         cachedBlobUrl = blob.url;
-        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors, uploaded: ${blob.uploadedAt})`);
+        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors)`);
         
         // Small delay to ensure blob is fully propagated (CDN cache might take a moment)
         // This is optional but helps ensure consistency
