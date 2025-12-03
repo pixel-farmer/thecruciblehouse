@@ -36,21 +36,32 @@ export async function GET() {
 
 
 
-  const pages = await supabase.from("visitor_events").select("page");
+  // Get all pages and count visits per page
+  const pagesData = await supabase.from("visitor_events").select("page");
+  
+  const pages: Record<string, number> = {};
+  (pagesData.data || []).forEach((row) => {
+    const page = row.page || 'unknown';
+    pages[page] = (pages[page] || 0) + 1;
+  });
 
-  const pagesCount = new Set((pages.data || []).map((p) => p.page)).size;
 
 
-
-  const recent = await supabase
-
+  // Get recent visits (last 20)
+  const recentData = await supabase
     .from("visitor_events")
-
     .select("*")
-
     .order("timestamp", { ascending: false })
-
     .limit(20);
+
+  // Transform recent data to match AdminDashboard interface
+  const recent = (recentData.data || []).map((row) => ({
+    id: row.id,
+    timestamp: row.timestamp,
+    page: row.page,
+    ip: row.ip_hash || undefined,
+    userAgent: row.user_agent || undefined,
+  }));
 
 
 
@@ -64,11 +75,9 @@ export async function GET() {
 
     last30Days: last30.count || 0,
 
-    pagesCount,
+    pages,
 
-    recentCount: recent.data?.length || 0,
-
-    recent: recent.data || [],
+    recent,
 
     timestamp: new Date().toISOString()
 
