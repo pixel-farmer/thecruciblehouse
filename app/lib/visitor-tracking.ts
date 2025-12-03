@@ -43,21 +43,71 @@ export async function getVisitors(): Promise<Visitor[]> {
   // Use Vercel Blob if available (production)
   if (useBlob()) {
     try {
-      // First, try to find the blob by listing blobs with our key
-      const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
+      // Try multiple approaches to find the blob
       
-      // Find exact match
-      const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
-      
-      if (blob) {
-        cachedBlobUrl = blob.url;
-        // Fetch the blob content
-        const response = await fetch(blob.url);
-        if (response.ok) {
-          const text = await response.text();
-          return JSON.parse(text);
+      // Approach 1: Use cached URL if available
+      if (cachedBlobUrl) {
+        try {
+          const response = await fetch(cachedBlobUrl);
+          if (response.ok) {
+            const text = await response.text();
+            const data = JSON.parse(text);
+            if (Array.isArray(data) && data.length > 0) {
+              return data;
+            }
+          }
+        } catch (error) {
+          // Cached URL might be stale, continue to other approaches
+          console.log('Cached blob URL failed, trying other methods...');
         }
       }
+      
+      // Approach 2: List all blobs and find exact match
+      try {
+        const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
+        const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
+        
+        if (blob) {
+          cachedBlobUrl = blob.url;
+          const response = await fetch(blob.url);
+          if (response.ok) {
+            const text = await response.text();
+            const data = JSON.parse(text);
+            if (Array.isArray(data)) {
+              return data;
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Error listing blobs:', error);
+      }
+      
+      // Approach 3: Try listing all blobs to find any visitor-related data
+      try {
+        const { blobs } = await list({ prefix: 'visitor' });
+        // Look for any blob that might contain visitor data
+        for (const blob of blobs) {
+          if (blob.pathname.includes('visitor') || blob.pathname.includes('visitors')) {
+            try {
+              const response = await fetch(blob.url);
+              if (response.ok) {
+                const text = await response.text();
+                const data = JSON.parse(text);
+                if (Array.isArray(data) && data.length > 0) {
+                  console.log(`Found visitor data in blob: ${blob.pathname}`);
+                  cachedBlobUrl = blob.url;
+                  return data;
+                }
+              }
+            } catch (error) {
+              // Continue to next blob
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Error searching for visitor blobs:', error);
+      }
+      
       return [];
     } catch (error: any) {
       // If blob doesn't exist or other error, return empty array
