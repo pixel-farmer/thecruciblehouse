@@ -1,10 +1,63 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Community.module.css';
 
 export default function CommunityPage() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [hasPaidMembership, setHasPaidMembership] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check authentication and membership status
+    const checkMembership = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsLoggedIn(!!session);
+
+        if (session) {
+          // Check if user has paid membership
+          // For now, we'll check user metadata or you can implement a separate check
+          // This is a placeholder - you'll need to implement actual membership checking
+          const userMetadata = session.user.user_metadata;
+          const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+          
+          // If you have a membership field in user metadata, check it
+          // Otherwise, you can query a separate memberships table
+          setHasPaidMembership(!!membershipStatus);
+        } else {
+          setHasPaidMembership(false);
+        }
+      } catch (error) {
+        console.error('Error checking membership:', error);
+        setHasPaidMembership(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkMembership();
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+      if (session) {
+        const userMetadata = session.user.user_metadata;
+        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+        setHasPaidMembership(!!membershipStatus);
+      } else {
+        setHasPaidMembership(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -105,29 +158,71 @@ export default function CommunityPage() {
             <ScrollAnimation>
               <div className={styles.column}>
                 <h3 className={styles.columnTitle}>Members Near Me</h3>
-                <div className={styles.nearbyList}>
-                  <div className={styles.nearbyItem}>
-                    <div className={styles.nearbyAvatar}>MC</div>
-                    <div className={styles.nearbyInfo}>
-                      <p className={styles.nearbyName}>Mike Chen</p>
-                      <p className={styles.nearbyDistance}>2.3 miles away</p>
+                
+                {hasPaidMembership ? (
+                  <div className={styles.nearbyList}>
+                    <div className={styles.nearbyItem}>
+                      <div className={styles.nearbyAvatar}>MC</div>
+                      <div className={styles.nearbyInfo}>
+                        <p className={styles.nearbyName}>Mike Chen</p>
+                        <p className={styles.nearbyDistance}>2.3 miles away</p>
+                      </div>
+                    </div>
+                    <div className={styles.nearbyItem}>
+                      <div className={styles.nearbyAvatar}>SL</div>
+                      <div className={styles.nearbyInfo}>
+                        <p className={styles.nearbyName}>Sarah Lee</p>
+                        <p className={styles.nearbyDistance}>4.7 miles away</p>
+                      </div>
+                    </div>
+                    <div className={styles.nearbyItem}>
+                      <div className={styles.nearbyAvatar}>RW</div>
+                      <div className={styles.nearbyInfo}>
+                        <p className={styles.nearbyName}>Robert White</p>
+                        <p className={styles.nearbyDistance}>6.1 miles away</p>
+                      </div>
                     </div>
                   </div>
-                  <div className={styles.nearbyItem}>
-                    <div className={styles.nearbyAvatar}>SL</div>
-                    <div className={styles.nearbyInfo}>
-                      <p className={styles.nearbyName}>Sarah Lee</p>
-                      <p className={styles.nearbyDistance}>4.7 miles away</p>
-                    </div>
+                ) : (
+                  <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+                    <p style={{ 
+                      color: 'var(--text-light)', 
+                      fontFamily: 'var(--font-inter)',
+                      marginBottom: '1rem',
+                      fontSize: '0.9rem'
+                    }}>
+                      Upgrade to a paid membership to see members near you and connect with local artists.
+                    </p>
+                    <button
+                      className="inline-block py-2 rounded-xl focus:outline-none"
+                      style={{
+                        fontSize: '0.95rem',
+                        fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px',
+                        fontFamily: 'var(--font-inter)',
+                        borderRadius: '0.75rem',
+                        backgroundColor: '#ff6622',
+                        color: 'white',
+                        outline: 'none',
+                        border: 'none',
+                        textDecoration: 'none',
+                        transition: 'background-color 0.3s ease',
+                        paddingLeft: '10px',
+                        paddingRight: '10px',
+                        cursor: 'pointer',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#e55a1a';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#ff6622';
+                      }}
+                    >
+                      UPGRADE
+                    </button>
                   </div>
-                  <div className={styles.nearbyItem}>
-                    <div className={styles.nearbyAvatar}>RW</div>
-                    <div className={styles.nearbyInfo}>
-                      <p className={styles.nearbyName}>Robert White</p>
-                      <p className={styles.nearbyDistance}>6.1 miles away</p>
-                    </div>
-                  </div>
-                </div>
+                )}
 
                 <h4 className={styles.subsectionTitle}>Upcoming Events</h4>
                 <div className={styles.eventList}>
