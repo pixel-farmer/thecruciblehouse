@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
     // Get geographic location from IP
     const location = await getLocationFromIP(ip);
 
+    console.log('Tracking visit:', { page, ip, hasLocation: !!location.country });
+
     await addVisitor({
       page: page || 'unknown',
       ip: ip || 'unknown',
@@ -64,11 +66,12 @@ export async function POST(request: NextRequest) {
       city: location.city,
     });
 
+    console.log('Visitor tracked successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Visitor tracking error:', error);
     // Don't fail the request if tracking fails
-    return NextResponse.json({ success: false }, { status: 500 });
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
 

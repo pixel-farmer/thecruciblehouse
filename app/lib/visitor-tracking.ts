@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { put, get, del } from '@vercel/blob';
 
 export interface Visitor {
   id: string;
@@ -16,6 +17,12 @@ export interface Visitor {
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const VISITORS_FILE = path.join(DATA_DIR, 'visitors.json');
+const VISITORS_BLOB_KEY = 'visitors.json';
+
+// Check if we're using Vercel Blob (production) or file system (local dev)
+function useBlob(): boolean {
+  return !!process.env.BLOB_READ_WRITE_TOKEN;
+}
 
 async function ensureDataDir() {
   try {
@@ -30,6 +37,26 @@ async function ensureDataDir() {
 }
 
 export async function getVisitors(): Promise<Visitor[]> {
+  // Use Vercel Blob if available (production)
+  if (useBlob()) {
+    try {
+      const blob = await get(VISITORS_BLOB_KEY);
+      if (blob) {
+        const text = await blob.text();
+        return JSON.parse(text);
+      }
+      return [];
+    } catch (error: any) {
+      // If blob doesn't exist (404), return empty array
+      if (error.status === 404) {
+        return [];
+      }
+      console.error('Error reading visitors from Blob:', error);
+      return [];
+    }
+  }
+
+  // Fallback to file system (local development)
   await ensureDataDir();
   
   if (!existsSync(VISITORS_FILE)) {
@@ -47,8 +74,6 @@ export async function getVisitors(): Promise<Visitor[]> {
 
 export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Promise<void> {
   try {
-    await ensureDataDir();
-
     const visitors = await getVisitors();
     const newVisitor: Visitor = {
       ...visitor,
@@ -58,14 +83,37 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
 
     visitors.push(newVisitor);
     
-    // Keep only last 10,000 visitors to prevent file from growing too large
+    // Keep only last 10,000 visitors to prevent storage from growing too large
     const trimmedVisitors = visitors.slice(-10000);
+    const jsonData = JSON.stringify(trimmedVisitors, null, 2);
 
-    await writeFile(VISITORS_FILE, JSON.stringify(trimmedVisitors, null, 2), 'utf-8');
+    // Use Vercel Blob if available (production)
+    if (useBlob()) {
+      try {
+        // Delete old blob if it exists, then create new one
+        try {
+          await del(VISITORS_BLOB_KEY);
+        } catch (error) {
+          // Ignore if blob doesn't exist
+        }
+        
+        await put(VISITORS_BLOB_KEY, jsonData, {
+          contentType: 'application/json',
+          access: 'public',
+        });
+        return;
+      } catch (error) {
+        console.error('Error writing to Blob:', error);
+        // Fall through to file system if Blob fails
+      }
+    }
+
+    // Fallback to file system (local development)
+    await ensureDataDir();
+    await writeFile(VISITORS_FILE, jsonData, 'utf-8');
   } catch (error) {
-    // In serverless environments (like Vercel), file system is read-only
-    // Silently fail - visitor tracking won't work but site will still function
-    console.error('Error adding visitor (may be expected in serverless environments):', error);
+    console.error('Error adding visitor:', error);
+    // Don't throw - allow site to function even if tracking fails
   }
 }
 
