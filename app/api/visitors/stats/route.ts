@@ -15,13 +15,22 @@ export async function GET(request: NextRequest) {
     }
 
     const stats = await getVisitorStats();
+    
+    // Always return stats, even if empty (handles serverless read-only filesystem)
     return NextResponse.json(stats);
   } catch (error) {
     console.error('Error fetching visitor stats:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    
+    // Return empty stats instead of error to prevent dashboard from breaking
+    // This handles cases where file system is read-only (e.g., Vercel serverless)
+    return NextResponse.json({
+      total: 0,
+      last24Hours: 0,
+      last7Days: 0,
+      last30Days: 0,
+      pages: {},
+      recent: [],
+    });
   }
 }
 
