@@ -31,7 +31,7 @@ export default function Navigation() {
 
   const navLinks = [
     { href: '/', label: 'Home' },
-    { href: '/artist', label: 'Artist' },
+    { href: '/artist', label: 'Artists' },
     { href: '/about', label: 'About' },
     { href: '/community', label: 'COMMUNITY' },
     { href: '/shop', label: 'Shop' },
