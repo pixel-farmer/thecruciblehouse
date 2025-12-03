@@ -1,7 +1,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
-import { put, get, del } from '@vercel/blob';
+import { put, del, list } from '@vercel/blob';
 
 export interface Visitor {
   id: string;
@@ -18,6 +18,9 @@ export interface Visitor {
 const DATA_DIR = path.join(process.cwd(), 'data');
 const VISITORS_FILE = path.join(DATA_DIR, 'visitors.json');
 const VISITORS_BLOB_KEY = 'visitors.json';
+
+// Store the blob URL after first put operation
+let cachedBlobUrl: string | null = null;
 
 // Check if we're using Vercel Blob (production) or file system (local dev)
 function useBlob(): boolean {
@@ -40,17 +43,24 @@ export async function getVisitors(): Promise<Visitor[]> {
   // Use Vercel Blob if available (production)
   if (useBlob()) {
     try {
-      const blob = await get(VISITORS_BLOB_KEY);
+      // First, try to find the blob by listing blobs with our key
+      const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
+      
+      // Find exact match
+      const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
+      
       if (blob) {
-        const text = await blob.text();
-        return JSON.parse(text);
+        cachedBlobUrl = blob.url;
+        // Fetch the blob content
+        const response = await fetch(blob.url);
+        if (response.ok) {
+          const text = await response.text();
+          return JSON.parse(text);
+        }
       }
       return [];
     } catch (error: any) {
-      // If blob doesn't exist (404), return empty array
-      if (error.status === 404) {
-        return [];
-      }
+      // If blob doesn't exist or other error, return empty array
       console.error('Error reading visitors from Blob:', error);
       return [];
     }
@@ -90,17 +100,32 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
     // Use Vercel Blob if available (production)
     if (useBlob()) {
       try {
-        // Delete old blob if it exists, then create new one
-        try {
-          await del(VISITORS_BLOB_KEY);
-        } catch (error) {
-          // Ignore if blob doesn't exist
+        // Delete old blob if it exists
+        if (cachedBlobUrl) {
+          try {
+            await del(cachedBlobUrl);
+          } catch (error) {
+            // Ignore if blob doesn't exist
+          }
+        } else {
+          // Try to find and delete by key
+          try {
+            const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
+            const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
+            if (blob) {
+              await del(blob.url);
+            }
+          } catch (error) {
+            // Ignore if blob doesn't exist
+          }
         }
         
-        await put(VISITORS_BLOB_KEY, jsonData, {
+        // Upload new blob
+        const blob = await put(VISITORS_BLOB_KEY, jsonData, {
           contentType: 'application/json',
           access: 'public',
         });
+        cachedBlobUrl = blob.url;
         return;
       } catch (error) {
         console.error('Error writing to Blob:', error);
