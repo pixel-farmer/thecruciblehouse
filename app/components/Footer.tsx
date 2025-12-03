@@ -14,7 +14,7 @@ export default function Footer() {
             />
           </div>
           <div className={styles.footerLinks}>
-            <Link href="/artist">Artist</Link>
+            <Link href="/artist">Artists</Link>
             <Link href="/commissions">Commissions</Link>
             <Link href="/community">Community</Link>
             <Link href="/resources">Resources</Link>

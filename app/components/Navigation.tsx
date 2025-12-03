@@ -15,6 +15,7 @@ export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -103,60 +104,52 @@ export default function Navigation() {
   }, [isDropdownOpen]);
 
   const handleLogout = async () => {
-    try {
-      setIsDropdownOpen(false);
-      isLoggingOutRef.current = true; // Prevent auth state change listener from updating UI
-      
-      // Sign out from Supabase first
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
-      
-      if (error) {
-        console.error('Logout error:', error);
-      }
-      
-      // Clear all Supabase session data from localStorage
-      if (typeof window !== 'undefined') {
-        try {
-          // Clear all localStorage items that might contain Supabase data
-          const keysToRemove: string[] = [];
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && (
-              key.startsWith('sb-') || 
-              key.includes('supabase') || 
-              key.includes('auth-token') ||
-              key.includes('auth.session')
-            )) {
-              keysToRemove.push(key);
-            }
+    // Set flags immediately to prevent any UI updates
+    isLoggingOutRef.current = true;
+    setIsLoggingOut(true);
+    setIsDropdownOpen(false);
+    
+    // Sign out from Supabase first (but don't wait for it to complete)
+    supabase.auth.signOut({ scope: 'global' }).catch(() => {
+      // Ignore errors
+    });
+    
+    // Clear localStorage synchronously
+    if (typeof window !== 'undefined') {
+      try {
+        // Clear all localStorage items that might contain Supabase data
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (
+            key.startsWith('sb-') || 
+            key.includes('supabase') || 
+            key.includes('auth-token') ||
+            key.includes('auth.session')
+          )) {
+            keysToRemove.push(key);
           }
-          keysToRemove.forEach(key => {
-            try {
-              localStorage.removeItem(key);
-            } catch (e) {
-              // Ignore errors removing individual items
-            }
-          });
-        } catch (e) {
-          console.error('Error clearing localStorage:', e);
         }
+        keysToRemove.forEach(key => {
+          try {
+            localStorage.removeItem(key);
+          } catch (e) {
+            // Ignore errors
+          }
+        });
         
-        // Also clear sessionStorage
+        // Clear sessionStorage
         try {
           sessionStorage.clear();
         } catch (e) {
-          // Ignore sessionStorage errors
+          // Ignore errors
         }
+      } catch (e) {
+        // Ignore errors
       }
       
-      // Redirect immediately - don't wait for anything
-      // The isLoggingOut flag prevents UI updates during redirect
+      // Redirect immediately - use href instead of replace
       window.location.href = '/?logout=' + Date.now();
-    } catch (error) {
-      console.error('Logout error:', error);
-      isLoggingOutRef.current = false; // Reset flag on error
-      // Still redirect even if there's an error
-      window.location.href = '/';
     }
   };
 
@@ -195,7 +188,7 @@ export default function Navigation() {
               </Link>
             </li>
           ))}
-          {isLoggedIn ? (
+          {isLoggedIn && !isLoggingOut ? (
             <>
               <li style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
                 {/* Profile Picture with Dropdown */}
