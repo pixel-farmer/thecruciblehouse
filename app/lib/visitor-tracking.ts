@@ -134,100 +134,139 @@ export async function getVisitors(): Promise<Visitor[]> {
 }
 
 export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Promise<void> {
-  try {
-    console.log(`[addVisitor] Starting to add visitor for page: ${visitor.page}`);
-    
-    // CRITICAL: Always read existing visitors first to preserve all data
-    const existingVisitors = await getVisitors();
-    console.log(`[addVisitor] Current visitor count before adding: ${existingVisitors.length}`);
-    
-    const newVisitor: Visitor = {
-      ...visitor,
-      id: `visitor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date().toISOString(),
-    };
-
-    console.log(`[addVisitor] New visitor created:`, {
-      id: newVisitor.id,
-      page: newVisitor.page,
-      timestamp: newVisitor.timestamp,
-    });
-
-    // Add new visitor to existing list
-    const updatedVisitors = [...existingVisitors, newVisitor];
-    console.log(`[addVisitor] Updated visitor count: ${updatedVisitors.length}`);
-    
-    // Keep only last 10,000 visitors to prevent storage from growing too large
-    const trimmedVisitors = updatedVisitors.slice(-10000);
-    const jsonData = JSON.stringify(trimmedVisitors, null, 2);
-    console.log(`[addVisitor] Prepared ${trimmedVisitors.length} visitors for storage (${jsonData.length} bytes)`);
-
-    // Use Vercel Blob if available (production)
-    const shouldUseBlob = useBlob();
-    const isVercel = !!process.env.VERCEL;
-    
-    console.log(`[addVisitor] Storage check: useBlob=${shouldUseBlob}, isVercel=${isVercel}, hasToken=${!!process.env.BLOB_READ_WRITE_TOKEN}`);
-    
-    if (shouldUseBlob) {
-      try {
-        // CRITICAL: Use put with addRandomSuffix: false to ensure we always use the same key
-        // This ensures the blob persists across deployments
-        // The put operation will atomically overwrite the existing blob
-        console.log(`[addVisitor] Writing ${trimmedVisitors.length} visitors to blob (key: ${VISITORS_BLOB_KEY})`);
-        const blob = await put(VISITORS_BLOB_KEY, jsonData, {
-          contentType: 'application/json',
-          access: 'public',
-          addRandomSuffix: false, // CRITICAL: Must be false to use exact key and persist across deployments
-          allowOverwrite: true, // CRITICAL: Allow overwriting existing blob to update visitor data
-        });
-        
-        // Update cache with new URL
-        cachedBlobUrl = blob.url;
-        console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors)`);
-        
-        // Small delay to ensure blob is fully propagated (CDN cache might take a moment)
-        // This is optional but helps ensure consistency
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
-        return;
-      } catch (error: any) {
-        console.error('[addVisitor] Error writing to Blob:', error);
-        console.error('[addVisitor] Error details:', {
-          message: error?.message,
-          name: error?.name,
-          code: error?.code,
-          stack: error?.stack,
-        });
-        
-        // On Vercel, we MUST use blob - don't fall through to filesystem
-        if (isVercel) {
-          console.error('[addVisitor] CRITICAL: Blob write failed on Vercel. Cannot use filesystem fallback.');
-          throw error; // Re-throw so it's logged properly
-        }
-        // Fall through to file system only on local dev
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 200; // milliseconds
+  
+  // Add a small random delay (0-50ms) to spread out concurrent requests and reduce collisions
+  const initialDelay = Math.random() * 50;
+  await new Promise(resolve => setTimeout(resolve, initialDelay));
+  
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`[addVisitor] Retry attempt ${attempt + 1}/${MAX_RETRIES}`);
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * Math.pow(2, attempt - 1)));
       }
-    } else if (isVercel) {
-      // On Vercel but blob token not set - this is an error
-      console.error('[addVisitor] CRITICAL ERROR: Running on Vercel but BLOB_READ_WRITE_TOKEN is not set!');
-      console.error('[addVisitor] Cannot write to filesystem on Vercel. Please set BLOB_READ_WRITE_TOKEN environment variable.');
-      throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required on Vercel. Please configure it in your Vercel project settings.');
-    }
+      
+      console.log(`[addVisitor] Starting to add visitor for page: ${visitor.page} (attempt ${attempt + 1})`);
+      
+      // CRITICAL: Always read existing visitors fresh before each attempt to prevent race conditions
+      // Clear cache to ensure we get the latest data
+      cachedBlobUrl = null;
+      const existingVisitors = await getVisitors();
+      console.log(`[addVisitor] Current visitor count before adding: ${existingVisitors.length}`);
+      
+      // Create new visitor with unique ID
+      const newVisitor: Visitor = {
+        ...visitor,
+        id: `visitor-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date().toISOString(),
+      };
 
-    // Fallback to file system (local development only)
-    // On Vercel, filesystem is read-only, so skip this
-    if (!process.env.VERCEL) {
-      await ensureDataDir();
-      await writeFile(VISITORS_FILE, jsonData, 'utf-8');
-      console.log(`[addVisitor] Wrote ${trimmedVisitors.length} visitors to file system`);
-    } else {
-      console.error('[addVisitor] ERROR: Cannot write to filesystem on Vercel. BLOB_READ_WRITE_TOKEN must be set!');
-      throw new Error('Blob storage not configured. Please set BLOB_READ_WRITE_TOKEN environment variable.');
+      console.log(`[addVisitor] New visitor created:`, {
+        id: newVisitor.id,
+        page: newVisitor.page,
+        timestamp: newVisitor.timestamp,
+      });
+
+      // Check if this visitor already exists (prevent duplicates from retries)
+      const visitorExists = existingVisitors.some(v => v.id === newVisitor.id);
+      if (visitorExists) {
+        console.log(`[addVisitor] Visitor ${newVisitor.id} already exists, skipping`);
+        return; // Already added, success
+      }
+
+      // Add new visitor to existing list
+      const updatedVisitors = [...existingVisitors, newVisitor];
+      console.log(`[addVisitor] Updated visitor count: ${updatedVisitors.length}`);
+      
+      // Keep only last 10,000 visitors to prevent storage from growing too large
+      const trimmedVisitors = updatedVisitors.slice(-10000);
+      const jsonData = JSON.stringify(trimmedVisitors, null, 2);
+      console.log(`[addVisitor] Prepared ${trimmedVisitors.length} visitors for storage (${jsonData.length} bytes)`);
+
+      // Use Vercel Blob if available (production)
+      const shouldUseBlob = useBlob();
+      const isVercel = !!process.env.VERCEL;
+      
+      if (attempt === 0) {
+        console.log(`[addVisitor] Storage check: useBlob=${shouldUseBlob}, isVercel=${isVercel}, hasToken=${!!process.env.BLOB_READ_WRITE_TOKEN}`);
+      }
+      
+      if (shouldUseBlob) {
+        try {
+          // CRITICAL: Use put with addRandomSuffix: false to ensure we always use the same key
+          // This ensures the blob persists across deployments
+          // The put operation will atomically overwrite the existing blob
+          console.log(`[addVisitor] Writing ${trimmedVisitors.length} visitors to blob (key: ${VISITORS_BLOB_KEY})`);
+          const blob = await put(VISITORS_BLOB_KEY, jsonData, {
+            contentType: 'application/json',
+            access: 'public',
+            addRandomSuffix: false, // CRITICAL: Must be false to use exact key and persist across deployments
+            allowOverwrite: true, // CRITICAL: Allow overwriting existing blob to update visitor data
+          });
+          
+          // Update cache with new URL
+          cachedBlobUrl = blob.url;
+          console.log(`[addVisitor] Successfully wrote blob: ${blob.url} (${trimmedVisitors.length} visitors)`);
+          
+          // Small delay to ensure blob is fully propagated (CDN cache might take a moment)
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          return; // Success!
+        } catch (error: any) {
+          console.error(`[addVisitor] Error writing to Blob (attempt ${attempt + 1}):`, error.message);
+          
+          // If this isn't the last attempt, continue to retry
+          if (attempt < MAX_RETRIES - 1) {
+            console.log(`[addVisitor] Will retry after delay...`);
+            continue; // Try again with fresh read
+          }
+          
+          // Last attempt failed
+          console.error('[addVisitor] All retry attempts failed. Error details:', {
+            message: error?.message,
+            name: error?.name,
+            code: error?.code,
+          });
+          
+          // On Vercel, we MUST use blob - don't fall through to filesystem
+          if (isVercel) {
+            console.error('[addVisitor] CRITICAL: Blob write failed on Vercel. Cannot use filesystem fallback.');
+            throw error; // Re-throw so it's logged properly
+          }
+          // Fall through to file system only on local dev
+        }
+      } else if (isVercel) {
+        // On Vercel but blob token not set - this is an error
+        console.error('[addVisitor] CRITICAL ERROR: Running on Vercel but BLOB_READ_WRITE_TOKEN is not set!');
+        console.error('[addVisitor] Cannot write to filesystem on Vercel. Please set BLOB_READ_WRITE_TOKEN environment variable.');
+        throw new Error('BLOB_READ_WRITE_TOKEN environment variable is required on Vercel. Please configure it in your Vercel project settings.');
+      }
+
+      // Fallback to file system (local development only)
+      // On Vercel, filesystem is read-only, so skip this
+      if (!isVercel) {
+        await ensureDataDir();
+        await writeFile(VISITORS_FILE, jsonData, 'utf-8');
+        console.log(`[addVisitor] Wrote ${trimmedVisitors.length} visitors to file system`);
+        return; // Success
+      }
+    } catch (error: any) {
+      // If this is the last attempt, log and exit
+      if (attempt === MAX_RETRIES - 1) {
+        console.error('[addVisitor] Error adding visitor (all retries exhausted):', error);
+        // Don't throw - allow site to function even if tracking fails
+        // But log the error so we can see it in Vercel logs
+        return;
+      }
+      // Otherwise, the loop will continue and retry
     }
-  } catch (error) {
-    console.error('[addVisitor] Error adding visitor:', error);
-    // Don't throw - allow site to function even if tracking fails
-    // But log the error so we can see it in Vercel logs
   }
+  
+  // If we get here, all retries failed
+  console.error('[addVisitor] Failed to add visitor after all retry attempts');
 }
 
 export async function getVisitorStats() {
