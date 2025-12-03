@@ -100,30 +100,12 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
     // Use Vercel Blob if available (production)
     if (useBlob()) {
       try {
-        // Delete old blob if it exists
-        if (cachedBlobUrl) {
-          try {
-            await del(cachedBlobUrl);
-          } catch (error) {
-            // Ignore if blob doesn't exist
-          }
-        } else {
-          // Try to find and delete by key
-          try {
-            const { blobs } = await list({ prefix: VISITORS_BLOB_KEY });
-            const blob = blobs.find(b => b.pathname === VISITORS_BLOB_KEY);
-            if (blob) {
-              await del(blob.url);
-            }
-          } catch (error) {
-            // Ignore if blob doesn't exist
-          }
-        }
-        
-        // Upload new blob
+        // Use put with the same key - this will overwrite the existing blob atomically
+        // No need to delete first, which prevents data loss if upload fails
         const blob = await put(VISITORS_BLOB_KEY, jsonData, {
           contentType: 'application/json',
           access: 'public',
+          addRandomSuffix: false, // Use the exact key to overwrite
         });
         cachedBlobUrl = blob.url;
         return;
