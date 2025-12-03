@@ -15,28 +15,25 @@ export interface Visitor {
 // Database interface matching Supabase table structure
 interface VisitorEventRow {
   id: string;
-  created_at: string;
+  timestamp: string;
   page: string;
   ip_hash: string | null;
   user_agent: string | null;
-  referer: string | null;
-  country: string | null;
-  region: string | null;
-  city: string | null;
 }
 
 // Convert database row to Visitor interface
 function rowToVisitor(row: VisitorEventRow): Visitor {
   return {
     id: row.id,
-    timestamp: row.created_at,
+    timestamp: row.timestamp,
     page: row.page,
     ip: row.ip_hash || undefined, // Note: This is the hash, not the actual IP
     userAgent: row.user_agent || undefined,
-    referer: row.referer || undefined,
-    country: row.country || undefined,
-    region: row.region || undefined,
-    city: row.city || undefined,
+    // Note: referer, country, region, city are not in the database table
+    referer: undefined,
+    country: undefined,
+    region: undefined,
+    city: undefined,
   };
 }
 
@@ -50,7 +47,7 @@ export async function getVisitors(): Promise<Visitor[]> {
     const { data, error } = await supabaseServer
       .from('visitor_events')
       .select('*')
-      .order('created_at', { ascending: true });
+      .order('timestamp', { ascending: true });
 
     if (error) {
       console.error('[getVisitors] Error fetching visitors:', error);
@@ -90,10 +87,6 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
         page: visitor.page || 'unknown',
         ip_hash,
         user_agent: visitor.userAgent || null,
-        referer: visitor.referer || null,
-        country: visitor.country || null,
-        region: visitor.region || null,
-        city: visitor.city || null,
       });
 
     if (error) {
@@ -122,7 +115,7 @@ export async function getVisitorStats() {
     const { data: allVisitors, error: allError } = await supabaseServer
       .from('visitor_events')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('timestamp', { ascending: false });
 
     if (allError) {
       console.error('[getVisitorStats] Error fetching all visitors:', allError);

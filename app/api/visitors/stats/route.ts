@@ -1,55 +1,77 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifySession } from '@/app/lib/auth';
-import { getVisitorStats } from '@/app/lib/visitor-tracking';
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  try {
-    // Check authentication
-    const session = await verifySession();
-    
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+import { createClient } from "@supabase/supabase-js";
 
-    // Force fresh data by calling getVisitorStats (which always lists blobs)
-    const stats = await getVisitorStats();
-    
-    // Log stats for debugging
-    console.log(`[visitors/stats] Returning stats:`, {
-      total: stats.total,
-      last24Hours: stats.last24Hours,
-      last7Days: stats.last7Days,
-      last30Days: stats.last30Days,
-      pagesCount: Object.keys(stats.pages).length,
-      recentCount: stats.recent.length,
-      timestamp: new Date().toISOString(),
-    });
-    
-    // Always return stats, even if empty (handles serverless read-only filesystem)
-    // Add cache headers to prevent client-side caching
-    return NextResponse.json(stats, {
-      headers: {
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching visitor stats:', error);
-    
-    // Return empty stats instead of error to prevent dashboard from breaking
-    // This handles cases where file system is read-only (e.g., Vercel serverless)
-    return NextResponse.json({
-      total: 0,
-      last24Hours: 0,
-      last7Days: 0,
-      last30Days: 0,
-      pages: {},
-      recent: [],
-    });
-  }
+
+
+export async function GET() {
+
+  const supabase = createClient(
+
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+  );
+
+
+
+  const now = new Date();
+
+  const d24 = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  const d7 = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const d30 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+
+
+  const total = await supabase.from("visitor_events").select("*", { count: "exact", head: true });
+
+  const last24 = await supabase.from("visitor_events").select("*", { count: "exact", head: true }).gte("timestamp", d24);
+
+  const last7 = await supabase.from("visitor_events").select("*", { count: "exact", head: true }).gte("timestamp", d7);
+
+  const last30 = await supabase.from("visitor_events").select("*", { count: "exact", head: true }).gte("timestamp", d30);
+
+
+
+  const pages = await supabase.from("visitor_events").select("page");
+
+  const pagesCount = new Set((pages.data || []).map((p) => p.page)).size;
+
+
+
+  const recent = await supabase
+
+    .from("visitor_events")
+
+    .select("*")
+
+    .order("timestamp", { ascending: false })
+
+    .limit(20);
+
+
+
+  return NextResponse.json({
+
+    total: total.count || 0,
+
+    last24Hours: last24.count || 0,
+
+    last7Days: last7.count || 0,
+
+    last30Days: last30.count || 0,
+
+    pagesCount,
+
+    recentCount: recent.data?.length || 0,
+
+    recent: recent.data || [],
+
+    timestamp: new Date().toISOString()
+
+  });
+
 }
-
