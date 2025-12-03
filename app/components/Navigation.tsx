@@ -141,13 +141,8 @@ export default function Navigation() {
         }
       }
       
-      // Clear local state
-      setIsLoggedIn(false);
-      setUserAvatar(null);
-      setUserInitials('');
-      
-      // Wait a bit to ensure cleanup completes
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // Don't clear React state - redirect immediately to prevent UI flicker
+      // The page reload will reset all state anyway
       
       // Force a hard redirect with cache busting
       window.location.href = '/?logout=' + Date.now();
