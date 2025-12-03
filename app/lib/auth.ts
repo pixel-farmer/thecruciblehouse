@@ -11,7 +11,13 @@ export interface SessionPayload {
 }
 
 export async function encrypt(payload: SessionPayload) {
-  return new SignJWT(payload)
+  // Convert to plain object compatible with JWTPayload
+  const jwtPayload = {
+    userId: payload.userId,
+    expiresAt: payload.expiresAt.toISOString(),
+  };
+  
+  return new SignJWT(jwtPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('24h')
@@ -23,7 +29,16 @@ export async function decrypt(session: string | undefined = ''): Promise<Session
     const { payload } = await jwtVerify(session, key, {
       algorithms: ['HS256'],
     });
-    return payload as SessionPayload;
+    
+    // Convert back to SessionPayload format
+    if (payload && typeof payload === 'object' && 'userId' in payload && 'expiresAt' in payload) {
+      return {
+        userId: payload.userId as string,
+        expiresAt: new Date(payload.expiresAt as string),
+      };
+    }
+    
+    return null;
   } catch (error) {
     return null;
   }
