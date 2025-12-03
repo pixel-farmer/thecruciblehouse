@@ -31,24 +31,40 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    // Refresh stats every 10 seconds (more frequent updates)
+    const interval = setInterval(fetchStats, 10000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/visitors/stats');
+      // Add cache-busting query parameter to ensure fresh data
+      const response = await fetch(`/api/visitors/stats?t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[AdminDashboard] Stats received:', {
+          total: data.total,
+          recentCount: data.recent?.length || 0,
+          timestamp: new Date().toISOString(),
+        });
         setStats(data);
         setError('');
       } else if (response.status === 401) {
+        console.log('[AdminDashboard] Unauthorized, redirecting to login');
         router.push('/admin/login');
       } else {
+        const errorText = await response.text();
+        console.error('[AdminDashboard] Failed to load stats:', response.status, errorText);
         setError('Failed to load visitor statistics');
       }
     } catch (err) {
+      console.error('[AdminDashboard] Error fetching stats:', err);
       setError('An error occurred while loading statistics');
     } finally {
       setLoading(false);
@@ -103,9 +119,28 @@ export default function AdminDashboard() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Admin Dashboard</h1>
-        <button onClick={handleLogout} className={styles.logoutButton}>
-          Logout
-        </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button 
+            onClick={fetchStats} 
+            disabled={loading}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: '#ff6622',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.6 : 1,
+              fontSize: '0.9rem',
+              fontWeight: 500,
+            }}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+          <button onClick={handleLogout} className={styles.logoutButton}>
+            Logout
+          </button>
+        </div>
       </div>
 
       <div className={styles.statsGrid}>
