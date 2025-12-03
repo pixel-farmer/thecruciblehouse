@@ -1,0 +1,239 @@
+.community {
+  background-color: var(--secondary-color);
+  padding: 100px 0;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.sectionTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 3rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 60px;
+  color: var(--primary-color);
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.sectionTitle::after {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background-color: var(--accent-color);
+}
+
+.communityGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  margin-top: 60px;
+}
+
+.column {
+  background-color: var(--white);
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.columnTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 25px;
+  color: var(--primary-color);
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 10px;
+}
+
+.subsectionTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.4rem;
+  font-weight: 500;
+  margin-top: 30px;
+  margin-bottom: 15px;
+  color: var(--primary-color);
+}
+
+/* Column 1: Members & Groups */
+.memberList,
+.groupList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.memberItem,
+.groupItem {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background-color: var(--secondary-color);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.memberItem:hover,
+.groupItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.memberAvatar,
+.nearbyAvatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.memberInfo,
+.nearbyInfo {
+  flex: 1;
+}
+
+.memberName,
+.nearbyName,
+.groupName {
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+.memberActivity,
+.nearbyDistance,
+.groupMembers {
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.groupName {
+  font-size: 1.1rem;
+  margin-bottom: 5px;
+}
+
+/* Column 2: Blog */
+.blogList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.blogItem {
+  padding: 20px;
+  background-color: var(--secondary-color);
+  border-radius: 6px;
+  border-left: 4px solid var(--accent-color);
+  transition: all 0.3s ease;
+}
+
+.blogItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.blogTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 10px;
+}
+
+.blogExcerpt {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.blogDate {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  font-style: italic;
+}
+
+/* Column 3: Nearby & Events */
+.nearbyList,
+.eventList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.nearbyItem,
+.eventItem {
+  padding: 15px;
+  background-color: var(--secondary-color);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.nearbyItem {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.nearbyItem:hover,
+.eventItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.eventName {
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+.eventDate,
+.eventLocation {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin-bottom: 3px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .communityGrid {
+    grid-template-columns: 1fr;
+    gap: 30px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sectionTitle {
+    font-size: 2rem;
+  }
+
+  .columnTitle {
+    font-size: 1.5rem;
+  }
+
+  .column {
+    padding: 20px;
+  }
+}
+

@@ -33,7 +33,7 @@ export default function Navigation() {
     { href: '/', label: 'Home' },
     { href: '/artist', label: 'Artist' },
     { href: '/about', label: 'About' },
-    { href: '/contact', label: 'Contact' },
+    { href: '/community', label: 'COMMUNITY' },
     { href: '/shop', label: 'Shop' },
   ];
 
