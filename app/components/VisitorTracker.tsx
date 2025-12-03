@@ -76,22 +76,38 @@ const SUSPICIOUS_PATHS = [
 ];
 
 // Valid routes that should be tracked
+// Note: We'll track most routes except API routes and suspicious paths
+// The suspicious path check will filter out bad requests
 const VALID_ROUTES = [
-  /^\/$/,
-  /^\/artist(\/.*)?$/,
-  /^\/about$/,
-  /^\/contact$/,
-  /^\/shop(\/.*)?$/,
-  /^\/admin(\/.*)?$/,
+  /^\/$/,                    // Home
+  /^\/artist(\/.*)?$/,       // Artist pages
+  /^\/commissions(\/.*)?$/,  // Commissions
+  /^\/community(\/.*)?$/,   // Community
+  /^\/resources(\/.*)?$/,   // Resources
+  /^\/shop(\/.*)?$/,        // Shop pages
+  /^\/login$/,              // Login
+  /^\/signup$/,             // Signup
+  /^\/forgot-password$/,    // Forgot password
+  /^\/admin(\/.*)?$/,       // Admin (though we might want to exclude this)
 ];
 
 function isSuspiciousPath(pathname: string): boolean {
+  // Skip API routes - these are server-side only
+  if (pathname.startsWith('/api/')) {
+    return true;
+  }
+  
+  // Skip Next.js internal routes
+  if (pathname.startsWith('/_next/') || pathname.startsWith('/_vercel/')) {
+    return true;
+  }
+  
   // Check against suspicious patterns
   if (SUSPICIOUS_PATHS.some(pattern => pattern.test(pathname))) {
     return true;
   }
   
-  // Check if it's a valid route
+  // Check if it's a valid route - if so, allow tracking
   if (VALID_ROUTES.some(pattern => pattern.test(pathname))) {
     return false;
   }
@@ -99,13 +115,15 @@ function isSuspiciousPath(pathname: string): boolean {
   // If it's not a valid route and contains suspicious patterns, mark as suspicious
   // This catches things like /cmd_sco, /wp-admin, etc.
   const suspiciousKeywords = [
-    'cmd', 'exec', 'shell', 'eval', 'system', 'admin', 'config',
+    'cmd', 'exec', 'shell', 'eval', 'system', 'config',
     'backup', 'db', 'sql', 'php', 'asp', 'jsp', 'cgi', 'bin',
     'root', 'etc', 'var', 'usr', 'lib', 'opt', 'srv', 'home',
     'proc', 'dev', 'sys', 'boot', 'mnt', 'media', 'run',
   ];
   
   const lowerPath = pathname.toLowerCase();
+  // Only mark as suspicious if it contains suspicious keywords
+  // Otherwise, allow tracking (might be a new valid route we haven't added yet)
   return suspiciousKeywords.some(keyword => lowerPath.includes(keyword));
 }
 
@@ -115,13 +133,15 @@ export default function VisitorTracker() {
   useEffect(() => {
     // Skip tracking for suspicious paths (bot/scanner requests)
     if (isSuspiciousPath(pathname)) {
+      console.log(`[VisitorTracker] Skipping suspicious path: ${pathname}`);
       return;
     }
 
     // Track page visit
     const trackVisit = async () => {
       try {
-        await fetch('/api/visitors/track', {
+        console.log(`[VisitorTracker] Tracking visit to: ${pathname}`);
+        const response = await fetch('/api/visitors/track', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -130,9 +150,16 @@ export default function VisitorTracker() {
             page: pathname,
           }),
         });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log(`[VisitorTracker] Visit tracked successfully:`, data);
+        } else {
+          console.error(`[VisitorTracker] Failed to track visit: ${response.status} ${response.statusText}`);
+        }
       } catch (error) {
-        // Silently fail - don't interrupt user experience
-        console.error('Visitor tracking error:', error);
+        // Log error but don't interrupt user experience
+        console.error('[VisitorTracker] Visitor tracking error:', error);
       }
     };
 

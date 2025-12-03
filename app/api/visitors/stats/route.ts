@@ -16,6 +16,16 @@ export async function GET(request: NextRequest) {
 
     const stats = await getVisitorStats();
     
+    // Log stats for debugging
+    console.log(`[visitors/stats] Returning stats:`, {
+      total: stats.total,
+      last24Hours: stats.last24Hours,
+      last7Days: stats.last7Days,
+      last30Days: stats.last30Days,
+      pagesCount: Object.keys(stats.pages).length,
+      recentCount: stats.recent.length,
+    });
+    
     // Always return stats, even if empty (handles serverless read-only filesystem)
     return NextResponse.json(stats);
   } catch (error) {
