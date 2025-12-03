@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -18,13 +18,6 @@ export default function SignUpPage() {
     e.preventDefault();
     setMessage('');
     setLoading(true);
-
-    // Check if Supabase is configured
-    if (!isSupabaseConfigured()) {
-      setMessage('Authentication is not configured. Please contact the site administrator.');
-      setLoading(false);
-      return;
-    }
 
     if (password !== confirmPassword) {
       setMessage('Passwords do not match');

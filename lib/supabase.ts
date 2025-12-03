@@ -56,7 +56,16 @@ function createSupabaseClient(): SupabaseClient {
 export const supabase: SupabaseClient = createSupabaseClient();
 
 // Export a helper to check if Supabase is configured
+// Check the actual client URL to determine if it's a placeholder
 export function isSupabaseConfigured(): boolean {
-  return !isPlaceholderClient && !!supabaseUrl && !!supabaseAnonKey;
+  // Check if we have valid env vars (runtime check)
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  
+  if (!url || !key) return false;
+  if (url.includes('placeholder') || url.includes('your-supabase')) return false;
+  if (key.includes('placeholder') || key.includes('your-supabase')) return false;
+  
+  return true;
 }
 

@@ -24,14 +24,26 @@ export default function LoginPage() {
       });
 
       if (error) {
-        setMessage(error.message);
+        // Check if it's a configuration/network error
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          setMessage('Unable to connect to authentication server. This may be a configuration issue. Please contact support if this persists.');
+        } else {
+          setMessage(error.message);
+        }
+        console.error('Login error:', error);
       } else {
         setMessage('Login successful! Redirecting...');
         router.push('/');
         router.refresh();
       }
-    } catch (err) {
-      setMessage('An unexpected error occurred');
+    } catch (err: any) {
+      console.error('Login exception:', err);
+      // Check for network/configuration errors
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.name === 'TypeError') {
+        setMessage('Unable to connect to authentication server. This may be a configuration issue. Please contact support if this persists.');
+      } else {
+        setMessage(err.message || 'An unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }
@@ -40,7 +52,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white rounded-lg shadow-md p-8" style={{ width: '100%', maxWidth: '400px' }}>
-        <h1 className="text-center mb-12" style={{ color: '#2c2c2c', fontFamily: 'var(--font-inter)', fontSize: '1.6rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>SIGN IN</h1>
+        <h1 className="text-center mb-12" style={{ color: 'var(--text-dark)', fontFamily: 'var(--font-inter)', fontSize: '1.6rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '1px' }}>SIGN IN</h1>
         
         <form onSubmit={handleSubmit} className="space-y-8">
           <div>
