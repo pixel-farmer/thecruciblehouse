@@ -98,21 +98,59 @@ export default function Navigation() {
   const handleLogout = async () => {
     try {
       setIsDropdownOpen(false);
-      // Clear local state immediately
-      setIsLoggedIn(false);
-      setUserAvatar(null);
-      setUserInitials('');
       
-      // Sign out from Supabase
+      // Sign out from Supabase first
       const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error('Logout error:', error);
       }
       
-      // Force a hard redirect to ensure session is cleared on Vercel
-      // This ensures cookies and cache are properly cleared
-      window.location.href = '/';
+      // Clear all Supabase session data from localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          // Clear all localStorage items that might contain Supabase data
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (
+              key.startsWith('sb-') || 
+              key.includes('supabase') || 
+              key.includes('auth-token') ||
+              key.includes('auth.session')
+            )) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => {
+            try {
+              localStorage.removeItem(key);
+            } catch (e) {
+              // Ignore errors removing individual items
+            }
+          });
+        } catch (e) {
+          console.error('Error clearing localStorage:', e);
+        }
+        
+        // Also clear sessionStorage
+        try {
+          sessionStorage.clear();
+        } catch (e) {
+          // Ignore sessionStorage errors
+        }
+      }
+      
+      // Clear local state
+      setIsLoggedIn(false);
+      setUserAvatar(null);
+      setUserInitials('');
+      
+      // Wait a bit to ensure cleanup completes
+      await new Promise(resolve => setTimeout(resolve, 200));
+      
+      // Force a hard redirect with cache busting
+      window.location.href = '/?logout=' + Date.now();
     } catch (error) {
       console.error('Logout error:', error);
       // Still redirect even if there's an error
