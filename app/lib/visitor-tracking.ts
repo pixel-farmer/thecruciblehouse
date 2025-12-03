@@ -178,6 +178,7 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
           contentType: 'application/json',
           access: 'public',
           addRandomSuffix: false, // CRITICAL: Must be false to use exact key and persist across deployments
+          allowOverwrite: true, // CRITICAL: Allow overwriting existing blob to update visitor data
         });
         
         // Update cache with new URL
