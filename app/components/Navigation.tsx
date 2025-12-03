@@ -30,9 +30,8 @@ export default function Navigation() {
   }, []);
 
   const navLinks = [
-    { href: '/', label: 'Home' },
     { href: '/artist', label: 'Artists' },
-    { href: '/about', label: 'About' },
+    { href: '/commissions', label: 'COMMISSIONS' },
     { href: '/community', label: 'COMMUNITY' },
     { href: '/shop', label: 'Shop' },
   ];
