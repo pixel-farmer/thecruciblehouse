@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -19,6 +19,13 @@ export default function SignUpPage() {
     setMessage('');
     setLoading(true);
 
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      setMessage('Authentication is not configured. Please contact the site administrator.');
+      setLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setMessage('Passwords do not match');
       setLoading(false);
@@ -32,7 +39,12 @@ export default function SignUpPage() {
       });
 
       if (error) {
-        setMessage(error.message || 'Failed to sign up. Please check your connection and try again.');
+        // Check if it's a configuration error
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          setMessage('Unable to connect to authentication server. This may be a configuration issue. Please contact support if this persists.');
+        } else {
+          setMessage(error.message || 'Failed to sign up. Please check your connection and try again.');
+        }
         console.error('Sign up error:', error);
         setSignupSuccess(false);
       } else {
@@ -45,7 +57,12 @@ export default function SignUpPage() {
       }
     } catch (err: any) {
       console.error('Sign up exception:', err);
-      setMessage(err.message || 'Failed to connect to server. Please check your internet connection and try again.');
+      // Check for network/configuration errors
+      if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError') || err.name === 'TypeError') {
+        setMessage('Unable to connect to authentication server. This may be a configuration issue. Please contact support if this persists.');
+      } else {
+        setMessage(err.message || 'Failed to connect to server. Please check your internet connection and try again.');
+      }
     } finally {
       setLoading(false);
     }
