@@ -96,10 +96,28 @@ export default function Navigation() {
   }, [isDropdownOpen]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsDropdownOpen(false);
-    router.push('/');
-    router.refresh();
+    try {
+      setIsDropdownOpen(false);
+      // Clear local state immediately
+      setIsLoggedIn(false);
+      setUserAvatar(null);
+      setUserInitials('');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
+      if (error) {
+        console.error('Logout error:', error);
+      }
+      
+      // Force a hard redirect to ensure session is cleared on Vercel
+      // This ensures cookies and cache are properly cleared
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still redirect even if there's an error
+      window.location.href = '/';
+    }
   };
 
   const navLinks = [
