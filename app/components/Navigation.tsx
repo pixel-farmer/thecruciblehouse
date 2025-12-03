@@ -15,6 +15,7 @@ export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
+  const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,6 +50,12 @@ export default function Navigation() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Don't update state if we're in the process of logging out
+      // This prevents UI flicker during logout
+      if (isLoggingOutRef.current) {
+        return;
+      }
+      
       setIsLoggedIn(!!session);
       if (session?.user) {
         const avatarUrl = session.user.user_metadata?.avatar_url || 
@@ -98,6 +105,7 @@ export default function Navigation() {
   const handleLogout = async () => {
     try {
       setIsDropdownOpen(false);
+      isLoggingOutRef.current = true; // Prevent auth state change listener from updating UI
       
       // Sign out from Supabase first
       const { error } = await supabase.auth.signOut({ scope: 'global' });
@@ -141,13 +149,12 @@ export default function Navigation() {
         }
       }
       
-      // Don't clear React state - redirect immediately to prevent UI flicker
-      // The page reload will reset all state anyway
-      
-      // Force a hard redirect with cache busting
+      // Redirect immediately - don't wait for anything
+      // The isLoggingOut flag prevents UI updates during redirect
       window.location.href = '/?logout=' + Date.now();
     } catch (error) {
       console.error('Logout error:', error);
+      isLoggingOutRef.current = false; // Reset flag on error
       // Still redirect even if there's an error
       window.location.href = '/';
     }
