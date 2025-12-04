@@ -110,9 +110,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (content.length > 280) {
+    if (content.length > 300) {
       return NextResponse.json(
-        { error: 'Post content must be 280 characters or less' },
+        { error: 'Post content must be 300 characters or less' },
         { status: 400 }
       );
     }

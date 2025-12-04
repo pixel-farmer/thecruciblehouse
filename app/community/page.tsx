@@ -310,7 +310,7 @@ export default function CommunityPage() {
                         rows={3}
                         value={postText}
                         onChange={(e) => setPostText(e.target.value)}
-                        maxLength={280}
+                        maxLength={300}
                       />
                       <div className={styles.composerActions}>
                         <div className={styles.composerIcons}>
@@ -319,7 +319,7 @@ export default function CommunityPage() {
                         <div className={styles.composerRight}>
                           {postText.length > 0 && (
                             <span className={styles.characterCount}>
-                              {280 - postText.length}
+                              {300 - postText.length}
                             </span>
                           )}
                           <button 

@@ -266,6 +266,37 @@ export default function Navigation() {
                         border: '1px solid var(--border-color)',
                       }}
                     >
+                      <Link
+                        href="/profile"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          setIsMenuOpen(false);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem 1rem',
+                          textAlign: 'left',
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--text-dark)',
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '0.95rem',
+                          fontWeight: 500,
+                          transition: 'background-color 0.2s ease',
+                          textDecoration: 'none',
+                          display: 'block',
+                          borderBottom: '1px solid var(--border-color)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#f5f5f5';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        Profile
+                      </Link>
                       <button
                         onClick={handleLogout}
                         style={{
