@@ -10,6 +10,14 @@ export default function CommunityPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPaidMembership, setHasPaidMembership] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [postText, setPostText] = useState('');
+  const [userInitials, setUserInitials] = useState('U');
+  const [userName, setUserName] = useState('');
+  const [userHandle, setUserHandle] = useState('');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [isPosting, setIsPosting] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -19,6 +27,32 @@ export default function CommunityPage() {
         setIsLoggedIn(!!session);
 
         if (session) {
+          setUserId(session.user.id);
+          
+          // Get user information for composer
+          const email = session.user.email || '';
+          const name = session.user.user_metadata?.full_name || 
+                      session.user.user_metadata?.name || '';
+          
+          if (name) {
+            setUserName(name);
+            const nameParts = name.split(' ');
+            setUserInitials(
+              nameParts.length >= 2 
+                ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
+                : nameParts[0][0].toUpperCase()
+            );
+          } else if (email) {
+            setUserName(email.split('@')[0]);
+            setUserInitials(email[0].toUpperCase());
+          }
+          
+          // Generate handle from email (username part before @)
+          if (email) {
+            const handle = email.split('@')[0];
+            setUserHandle(`@${handle}`);
+          }
+          
           // Check if user has paid membership
           // For now, we'll check user metadata or you can implement a separate check
           // This is a placeholder - you'll need to implement actual membership checking
@@ -30,6 +64,10 @@ export default function CommunityPage() {
           setHasPaidMembership(!!membershipStatus);
         } else {
           setHasPaidMembership(false);
+          setUserInitials('U');
+          setUserName('');
+          setUserHandle('');
+          setUserId(null);
         }
       } catch (error) {
         console.error('Error checking membership:', error);
@@ -47,16 +85,157 @@ export default function CommunityPage() {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session);
       if (session) {
+        setUserId(session.user.id);
+        
+        // Update user info
+        const email = session.user.email || '';
+        const name = session.user.user_metadata?.full_name || 
+                    session.user.user_metadata?.name || '';
+        
+        if (name) {
+          setUserName(name);
+          const nameParts = name.split(' ');
+          setUserInitials(
+            nameParts.length >= 2 
+              ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
+              : nameParts[0][0].toUpperCase()
+          );
+        } else if (email) {
+          setUserName(email.split('@')[0]);
+          setUserInitials(email[0].toUpperCase());
+        }
+        
+        if (email) {
+          const handle = email.split('@')[0];
+          setUserHandle(`@${handle}`);
+        }
+        
         const userMetadata = session.user.user_metadata;
         const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
         setHasPaidMembership(!!membershipStatus);
       } else {
         setHasPaidMembership(false);
+        setUserInitials('U');
+        setUserName('');
+        setUserHandle('');
+        setUserId(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch posts on load
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    try {
+      setPostsLoading(true);
+      const response = await fetch('/api/posts');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data.posts || []);
+      } else {
+        // Get the error details from the response
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        console.error('❌ Failed to fetch posts:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        });
+        
+        // Also log the error details separately for easier debugging
+        if (errorData.error) {
+          console.error('Error message:', errorData.error);
+        }
+        if (errorData.details) {
+          console.error('Error details:', errorData.details);
+        }
+        if (errorData.code) {
+          console.error('Error code:', errorData.code);
+        }
+        
+        // Show empty state - error is logged but won't break the UI
+        setPosts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching posts (network/exception):', error);
+      // Show empty state - error is logged but won't break the UI
+      setPosts([]);
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const handlePostSubmit = async () => {
+    if (!postText.trim() || !userId || isPosting) return;
+
+    try {
+      setIsPosting(true);
+      
+      // Get the current session to include the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('You must be logged in to post.');
+        setIsPosting(false);
+        return;
+      }
+
+      const response = await fetch('/api/posts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          content: postText.trim(),
+          userName,
+          userHandle,
+          userAvatar: userInitials,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Add the new post to the beginning of the posts array
+        setPosts([data.post, ...posts]);
+        setPostText('');
+        // Refresh posts to ensure we have the latest
+        await fetchPosts();
+      } else {
+        const error = await response.json();
+        console.error('Failed to create post:', error);
+        alert('Failed to post. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error creating post:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return `${diffInSeconds}s`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <motion.div
@@ -117,39 +296,67 @@ export default function CommunityPage() {
               </div>
             </ScrollAnimation>
 
-            {/* Column 2: Blog / Resources */}
+            {/* Column 2: Community Feed */}
             <ScrollAnimation>
               <div className={styles.column}>
-                <h3 className={styles.columnTitle}>Blog & Resources</h3>
-                <div className={styles.blogList}>
-                  <article className={styles.blogItem}>
-                    <h4 className={styles.blogTitle}>10 Marketing Strategies for Artists</h4>
-                    <p className={styles.blogExcerpt}>
-                      Learn how to effectively market your artwork and build your brand in the digital age.
-                    </p>
-                    <span className={styles.blogDate}>March 15, 2025</span>
-                  </article>
-                  <article className={styles.blogItem}>
-                    <h4 className={styles.blogTitle}>Mastering Color Theory</h4>
-                    <p className={styles.blogExcerpt}>
-                      A comprehensive guide to understanding and applying color theory in your artwork.
-                    </p>
-                    <span className={styles.blogDate}>March 10, 2025</span>
-                  </article>
-                  <article className={styles.blogItem}>
-                    <h4 className={styles.blogTitle}>Building Your Art Business</h4>
-                    <p className={styles.blogExcerpt}>
-                      Essential tips for turning your passion into a sustainable business.
-                    </p>
-                    <span className={styles.blogDate}>March 5, 2025</span>
-                  </article>
-                  <article className={styles.blogItem}>
-                    <h4 className={styles.blogTitle}>Digital Art Techniques Tutorial</h4>
-                    <p className={styles.blogExcerpt}>
-                      Step-by-step tutorial on creating stunning digital artwork using modern tools.
-                    </p>
-                    <span className={styles.blogDate}>February 28, 2025</span>
-                  </article>
+                <div className={styles.postFeed}>
+                  {/* Post Composer */}
+                  <div className={styles.postComposer}>
+                    <div className={styles.postAvatar}>{userInitials}</div>
+                    <div className={styles.composerContent}>
+                      <textarea
+                        className={styles.composerTextarea}
+                        placeholder="What's happening?"
+                        rows={3}
+                        value={postText}
+                        onChange={(e) => setPostText(e.target.value)}
+                        maxLength={280}
+                      />
+                      <div className={styles.composerActions}>
+                        <div className={styles.composerIcons}>
+                          {/* Icons can be added here later (image, etc.) */}
+                        </div>
+                        <div className={styles.composerRight}>
+                          {postText.length > 0 && (
+                            <span className={styles.characterCount}>
+                              {280 - postText.length}
+                            </span>
+                          )}
+                          <button 
+                            className={styles.postButton}
+                            disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
+                            onClick={handlePostSubmit}
+                          >
+                            {isPosting ? 'Posting...' : 'Post'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {postsLoading ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                      Loading posts...
+                    </div>
+                  ) : posts.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                      No posts yet. Be the first to post!
+                    </div>
+                  ) : (
+                    posts.map((post) => (
+                      <div key={post.id} className={styles.post}>
+                        <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                        <div className={styles.postContent}>
+                          <div className={styles.postHeader}>
+                            <span className={styles.postName}>{post.user_name || 'User'}</span>
+                            <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                            <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                          </div>
+                          <p className={styles.postText}>{post.content}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </ScrollAnimation>

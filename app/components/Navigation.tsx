@@ -159,8 +159,8 @@ export default function Navigation() {
     { href: '/commissions', label: 'COMMISSIONS' },
     { href: '/community', label: 'COMMUNITY' },
     { href: '/resources', label: 'RESOURCES' },
-    { href: '/shop', label: 'Shop' },
-  ];
+/*     { href: '/shop', label: 'Shop' },
+ */  ];
 
   return (
     <nav className={styles.navbar}>
