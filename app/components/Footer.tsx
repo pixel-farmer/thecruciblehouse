@@ -18,8 +18,8 @@ export default function Footer() {
             <Link href="/commissions">Commissions</Link>
             <Link href="/community">Community</Link>
             <Link href="/resources">Resources</Link>
-            <Link href="/shop">Shop</Link>
-          </div>
+{/*             <Link href="/shop">Shop</Link>
+ */}          </div>
           <div className={styles.footerSocial}>
             <a href="#" aria-label="Instagram">Instagram</a>
             <a href="#" aria-label="Facebook">Facebook</a>

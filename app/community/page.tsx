@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Community.module.css';
@@ -12,6 +13,7 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [postText, setPostText] = useState('');
   const [userInitials, setUserInitials] = useState('U');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
   const [userHandle, setUserHandle] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
@@ -29,9 +31,16 @@ export default function CommunityPage() {
         if (session) {
           setUserId(session.user.id);
           
-          // Get user information for composer
+          // Get avatar URL from user metadata
+          const avatarUrl = session.user.user_metadata?.avatar_url || 
+                           session.user.user_metadata?.picture || null;
+          setUserAvatar(avatarUrl);
+          
+          // Get user information for composer - prioritize display_name
           const email = session.user.email || '';
-          const name = session.user.user_metadata?.full_name || 
+          const displayName = session.user.user_metadata?.display_name;
+          const name = displayName || 
+                      session.user.user_metadata?.full_name || 
                       session.user.user_metadata?.name || '';
           
           if (name) {
@@ -47,8 +56,11 @@ export default function CommunityPage() {
             setUserInitials(email[0].toUpperCase());
           }
           
-          // Generate handle from email (username part before @)
-          if (email) {
+          // Use custom handle from metadata, or generate from email
+          const customHandle = session.user.user_metadata?.handle;
+          if (customHandle) {
+            setUserHandle(customHandle);
+          } else if (email) {
             const handle = email.split('@')[0];
             setUserHandle(`@${handle}`);
           }
@@ -65,6 +77,7 @@ export default function CommunityPage() {
         } else {
           setHasPaidMembership(false);
           setUserInitials('U');
+          setUserAvatar(null);
           setUserName('');
           setUserHandle('');
           setUserId(null);
@@ -87,9 +100,16 @@ export default function CommunityPage() {
       if (session) {
         setUserId(session.user.id);
         
-        // Update user info
+        // Get avatar URL from user metadata
+        const avatarUrl = session.user.user_metadata?.avatar_url || 
+                         session.user.user_metadata?.picture || null;
+        setUserAvatar(avatarUrl);
+        
+        // Update user info - prioritize display_name
         const email = session.user.email || '';
-        const name = session.user.user_metadata?.full_name || 
+        const displayName = session.user.user_metadata?.display_name;
+        const name = displayName || 
+                    session.user.user_metadata?.full_name || 
                     session.user.user_metadata?.name || '';
         
         if (name) {
@@ -105,7 +125,11 @@ export default function CommunityPage() {
           setUserInitials(email[0].toUpperCase());
         }
         
-        if (email) {
+        // Use custom handle from metadata, or generate from email
+        const customHandle = session.user.user_metadata?.handle;
+        if (customHandle) {
+          setUserHandle(customHandle);
+        } else if (email) {
           const handle = email.split('@')[0];
           setUserHandle(`@${handle}`);
         }
@@ -140,27 +164,41 @@ export default function CommunityPage() {
         setPosts(data.posts || []);
       } else {
         // Get the error details from the response
-        let errorData;
+        let errorData: any = {};
+        const contentType = response.headers.get('content-type');
+        
         try {
-          errorData = await response.json();
-        } catch {
-          errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+          if (contentType && contentType.includes('application/json')) {
+            errorData = await response.json();
+          } else {
+            const text = await response.text();
+            errorData = { 
+              error: text || `HTTP ${response.status}: ${response.statusText}`,
+              rawResponse: text 
+            };
+          }
+        } catch (parseError) {
+          errorData = { 
+            error: `HTTP ${response.status}: ${response.statusText}`,
+            parseError: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+          };
         }
         
-        console.error('❌ Failed to fetch posts:', {
+        console.error('Failed to fetch posts:', {
           status: response.status,
           statusText: response.statusText,
+          contentType: contentType,
           error: errorData,
         });
         
         // Also log the error details separately for easier debugging
-        if (errorData.error) {
+        if (errorData?.error) {
           console.error('Error message:', errorData.error);
         }
-        if (errorData.details) {
+        if (errorData?.details) {
           console.error('Error details:', errorData.details);
         }
-        if (errorData.code) {
+        if (errorData?.code) {
           console.error('Error code:', errorData.code);
         }
         
@@ -201,7 +239,7 @@ export default function CommunityPage() {
           content: postText.trim(),
           userName,
           userHandle,
-          userAvatar: userInitials,
+          userAvatar: userAvatar || userInitials,
         }),
       });
 
@@ -302,7 +340,19 @@ export default function CommunityPage() {
                 <div className={styles.postFeed}>
                   {/* Post Composer */}
                   <div className={styles.postComposer}>
-                    <div className={styles.postAvatar}>{userInitials}</div>
+                    {userAvatar && userAvatar.startsWith('http') ? (
+                      <div className={styles.postAvatarImage}>
+                        <Image
+                          src={userAvatar}
+                          alt="Profile"
+                          width={48}
+                          height={48}
+                          className={styles.postAvatarImg}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.postAvatar}>{userInitials}</div>
+                    )}
                     <div className={styles.composerContent}>
                       <textarea
                         className={styles.composerTextarea}
@@ -345,7 +395,19 @@ export default function CommunityPage() {
                   ) : (
                     posts.map((post) => (
                       <div key={post.id} className={styles.post}>
-                        <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                        {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                          <div className={styles.postAvatarImage}>
+                            <Image
+                              src={post.user_avatar}
+                              alt="Profile"
+                              width={48}
+                              height={48}
+                              className={styles.postAvatarImg}
+                            />
+                          </div>
+                        ) : (
+                          <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                        )}
                         <div className={styles.postContent}>
                           <div className={styles.postHeader}>
                             <span className={styles.postName}>{post.user_name || 'User'}</span>

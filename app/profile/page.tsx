@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
@@ -14,10 +15,6 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -80,6 +77,31 @@ export default function ProfilePage() {
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+
+    try {
+      // Use Supabase client directly for deletion (RLS will handle permissions)
+      const { error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) {
+        console.error('Error deleting post:', error);
+        alert(error.message || 'Failed to delete post');
+      } else {
+        // Remove the post from the local state
+        setUserPosts(userPosts.filter((post: any) => post.id !== postId));
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post. Please try again.');
+    }
+  };
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -109,15 +131,6 @@ export default function ProfilePage() {
     });
   };
 
-  const normalizeUrl = (url: string): string => {
-    if (!url || !url.trim()) return '';
-    const trimmed = url.trim();
-    // If URL doesn't start with http:// or https://, add https://
-    if (!trimmed.match(/^https?:\/\//i)) {
-      return `https://${trimmed}`;
-    }
-    return trimmed;
-  };
 
   if (loading) {
     return (
@@ -131,19 +144,23 @@ export default function ProfilePage() {
     return null;
   }
 
-  const userName = user.user_metadata?.full_name || 
+  const displayName = user.user_metadata?.display_name || null;
+  const userName = displayName || 
+                  user.user_metadata?.full_name || 
                   user.user_metadata?.name || 
                   user.email?.split('@')[0] || 
                   'User';
   
-  const userHandle = user.email ? `@${user.email.split('@')[0]}` : '@user';
+  const userHandle = user.user_metadata?.handle || 
+                     (user.email ? `@${user.email.split('@')[0]}` : '@user');
   const userAvatar = user.user_metadata?.avatar_url || 
                      user.user_metadata?.picture || null;
   
-  // Get user initials for avatar
+  // Get user initials for avatar - use display name if available
   let userInitials = 'U';
-  if (userName && userName !== user.email?.split('@')[0]) {
-    const nameParts = userName.split(' ');
+  const nameForInitials = displayName || userName;
+  if (nameForInitials && nameForInitials !== user.email?.split('@')[0]) {
+    const nameParts = nameForInitials.split(' ');
     userInitials = nameParts.length >= 2 
       ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
       : nameParts[0][0].toUpperCase();
@@ -153,148 +170,8 @@ export default function ProfilePage() {
 
   const joinDate = formatJoinDate(user.created_at);
   const portfolioUrl = user.user_metadata?.portfolio_url || '';
-  
-  // Display portfolio URL without protocol prefix in the input
-  const displayPortfolioUrl = portfolioUrl ? portfolioUrl.replace(/^https?:\/\//i, '') : '';
-
-  const handleEditProfile = () => {
-    setIsEditModalOpen(true);
-    setError(null);
-    setSuccess(false);
-  };
-
-  const handleCloseModal = () => {
-    setIsEditModalOpen(false);
-    setError(null);
-    setSuccess(false);
-  };
-
-  const handleSaveProfile = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setError(null);
-    setSuccess(false);
-
-    try {
-      const formData = new FormData(e.currentTarget);
-      const portfolioUrlInput = formData.get('portfolioUrl') as string;
-      const fileInput = formData.get('profilePicture') as File | null;
-
-      // Normalize portfolio URL (add https:// if missing)
-      const normalizedPortfolioUrl = portfolioUrlInput && portfolioUrlInput.trim()
-        ? normalizeUrl(portfolioUrlInput.trim())
-        : null;
-
-      let avatarUrl: string | null = null;
-      let shouldUpdateAvatar = false;
-
-      // Upload profile picture if provided
-      if (fileInput && fileInput.size > 0) {
-        shouldUpdateAvatar = true;
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session || !session.user) {
-          throw new Error('Not authenticated');
-        }
-
-        // Generate unique filename
-        const fileExt = fileInput.name.split('.').pop() || 'jpg';
-        const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
-
-        // Upload directly to Supabase Storage from client
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('profile-images')
-          .upload(filePath, fileInput, {
-            contentType: fileInput.type,
-            upsert: false,
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
-          
-          // Provide helpful error messages
-          let errorMessage = 'Failed to upload image';
-          if (uploadError.message.includes('The resource already exists')) {
-            errorMessage = 'An image with this name already exists. Please try again.';
-          } else if (uploadError.message.includes('new row violates row-level security') || uploadError.message.includes('permission denied')) {
-            errorMessage = 'Permission denied. Please check storage bucket policies. Make sure the "profile-images" bucket exists and has proper policies set up.';
-          } else if (uploadError.message.includes('Bucket not found')) {
-            errorMessage = 'Storage bucket not found. Please create "profile-images" bucket in Supabase Storage.';
-          } else {
-            errorMessage = uploadError.message || errorMessage;
-          }
-          
-          throw new Error(errorMessage);
-        }
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('profile-images')
-          .getPublicUrl(filePath);
-
-        if (!urlData?.publicUrl) {
-          throw new Error('Failed to get image URL');
-        }
-
-        avatarUrl = urlData.publicUrl;
-      }
-
-      // Update profile using client-side Supabase (more reliable for metadata updates)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !session.user) {
-        throw new Error('Not authenticated');
-      }
-
-      // Get current user metadata
-      const currentMetadata = session.user.user_metadata || {};
-      
-      // Prepare updated metadata
-      const updatedMetadata = { ...currentMetadata };
-      
-      if (shouldUpdateAvatar) {
-        updatedMetadata.avatar_url = avatarUrl;
-        updatedMetadata.picture = avatarUrl; // Also update picture field for consistency
-      }
-      
-      if (normalizedPortfolioUrl !== undefined) {
-        updatedMetadata.portfolio_url = normalizedPortfolioUrl;
-      }
-
-      console.log('Updating user metadata:', {
-        hasAvatar: shouldUpdateAvatar,
-        portfolioUrl: normalizedPortfolioUrl,
-        metadata: updatedMetadata
-      });
-
-      // Update user metadata directly using client-side Supabase
-      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
-        data: updatedMetadata,
-      });
-
-      if (updateError) {
-        console.error('Error updating user metadata:', updateError);
-        throw new Error(updateError.message || 'Failed to update profile');
-      }
-
-      console.log('Profile updated successfully:', updateData);
-
-      setSuccess(true);
-      
-      // Refresh user data to show updated profile
-      await refreshUser();
-      
-      // Close modal after a short delay
-      setTimeout(() => {
-        setIsEditModalOpen(false);
-        setSuccess(false);
-      }, 1500);
-    } catch (error: any) {
-      console.error('Error saving profile:', error);
-      setError(error.message || 'Failed to save profile. Please try again.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const bio = user.user_metadata?.bio || '';
+  const discipline = user.user_metadata?.discipline || '';
 
   return (
     <motion.div
@@ -304,10 +181,6 @@ export default function ProfilePage() {
     >
       <section className={styles.profile} style={{ paddingTop: '120px' }}>
         <div className={styles.container}>
-          <ScrollAnimation>
-            <h2 className={styles.sectionTitle}>Profile</h2>
-          </ScrollAnimation>
-
           <div className={styles.profileContent}>
             {/* Profile Header */}
             <ScrollAnimation>
@@ -331,8 +204,9 @@ export default function ProfilePage() {
                   <div className={styles.profileHeaderTop}>
                     <div>
                       <h3 className={styles.userName}>{userName}</h3>
+                      <p className={styles.userHandle}>{userHandle}</p>
                       <p className={styles.userMeta}>
-                        {userName} • Joined {joinDate}
+                        {discipline || `Joined ${joinDate}`}
                       </p>
                       {portfolioUrl && (
                         <a 
@@ -345,16 +219,27 @@ export default function ProfilePage() {
                         </a>
                       )}
                     </div>
-                    <button 
-                      onClick={handleEditProfile}
+                    <Link 
+                      href="/profile/edit"
                       className={styles.editButton}
+                      style={{ textDecoration: 'none', display: 'inline-block' }}
                     >
                       Edit Profile
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>
             </ScrollAnimation>
+
+            {/* Bio Section */}
+            {bio && (
+              <ScrollAnimation>
+                <div className={styles.bioSection}>
+                  <h4 className={styles.bioTitle}>Bio</h4>
+                  <p className={styles.bioText}>{bio}</p>
+                </div>
+              </ScrollAnimation>
+            )}
 
             {/* User Posts Section */}
             <ScrollAnimation>
@@ -374,7 +259,19 @@ export default function ProfilePage() {
                   <div className={styles.postsList}>
                     {userPosts.map((post) => (
                       <div key={post.id} className={styles.post}>
-                        <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
+                        {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                          <div className={styles.postAvatarImage}>
+                            <Image
+                              src={post.user_avatar}
+                              alt="Profile"
+                              width={48}
+                              height={48}
+                              className={styles.postAvatarImg}
+                            />
+                          </div>
+                        ) : (
+                          <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
+                        )}
                         <div className={styles.postContent}>
                           <div className={styles.postHeader}>
                             <span className={styles.postName}>{post.user_name || userName}</span>
@@ -382,7 +279,16 @@ export default function ProfilePage() {
                             <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
                           </div>
                           <p className={styles.postText}>{post.content}</p>
-                          <p className={styles.postDate}>{formatDate(post.created_at)}</p>
+                          <div className={styles.postFooter}>
+                            <p className={styles.postDate}>{formatDate(post.created_at)}</p>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              className={styles.deleteButton}
+                              title="Delete post"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -393,85 +299,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </section>
-
-      {/* Edit Profile Modal */}
-      {isEditModalOpen && (
-        <div className={styles.modalOverlay} onClick={handleCloseModal}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h3 className={styles.modalTitle}>Edit Profile</h3>
-              <button 
-                className={styles.modalClose}
-                onClick={handleCloseModal}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveProfile} className={styles.modalForm}>
-              <div className={styles.formGroup}>
-                <label htmlFor="profilePicture" className={styles.formLabel}>
-                  Profile Picture
-                </label>
-                <input
-                  id="profilePicture"
-                  name="profilePicture"
-                  type="file"
-                  accept="image/*"
-                  className={styles.fileInput}
-                />
-                <p className={styles.fileHint}>
-                  Upload a new profile picture (max 5MB)
-                </p>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label htmlFor="modalPortfolioUrl" className={styles.formLabel}>
-                  Portfolio/Website URL
-                </label>
-                <input
-                  id="modalPortfolioUrl"
-                  name="portfolioUrl"
-                  type="text"
-                  placeholder="yourportfolio.com"
-                  defaultValue={displayPortfolioUrl}
-                  className={styles.formInput}
-                />
-                <p className={styles.fileHint}>
-                  Enter URL without http:// or https:// (will be added automatically)
-                </p>
-              </div>
-
-              {error && (
-                <div className={styles.errorMessage}>{error}</div>
-              )}
-
-              {success && (
-                <div className={styles.successMessage}>Profile updated successfully!</div>
-              )}
-
-              <div className={styles.modalActions}>
-                <button
-                  type="button"
-                  onClick={handleCloseModal}
-                  className={styles.cancelButton}
-                  disabled={isSaving}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={styles.saveButton}
-                  disabled={isSaving}
-                >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </motion.div>
   );
 }

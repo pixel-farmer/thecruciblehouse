@@ -60,10 +60,25 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
 // GET: Fetch all posts
 export async function GET() {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('[posts GET] Missing Supabase environment variables:', {
+        hasUrl: !!supabaseUrl,
+        hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+        hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      });
+      return NextResponse.json(
+        { 
+          error: 'Server configuration error', 
+          details: 'supabaseKey is required.',
+        },
+        { status: 500 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch posts ordered by created_at descending (newest first)
     const { data, error } = await supabase
@@ -137,13 +152,16 @@ export async function POST(request: NextRequest) {
     const email = user.email || '';
     
     // Use user info from user object if not provided
+    // Priority: display_name > full_name > name > email username > 'User'
     const finalUserName = userName || 
+                         user.user_metadata?.display_name ||
                          user.user_metadata?.full_name || 
                          user.user_metadata?.name || 
                          email.split('@')[0] || 
                          'User';
     
     const finalUserHandle = userHandle || 
+                           user.user_metadata?.handle ||
                            (email ? `@${email.split('@')[0]}` : '@user');
     
     // Get user initials for avatar
@@ -196,6 +214,99 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ post: data, success: true }, { status: 201 });
   } catch (error) {
     console.error('[posts] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE: Delete a single post or all posts for the authenticated user
+export async function DELETE(request: NextRequest) {
+  try {
+    // Verify user is authenticated
+    const supabase = await createAuthenticatedSupabaseClient(request);
+    
+    // Get the user from the access token
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in.' },
+        { status: 401 }
+      );
+    }
+
+    const userId = user.id;
+
+    // Check if a post ID is provided in the query string
+    const { searchParams } = new URL(request.url);
+    const postId = searchParams.get('id');
+
+    if (postId) {
+      // Delete a single post
+      const { data, error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('id', postId)
+        .eq('user_id', userId); // Ensure user can only delete their own posts
+
+      if (error) {
+        console.error('[posts DELETE] Error deleting post:', error);
+        
+        // Check if it's an RLS policy violation
+        if (error.code === '42501' || error.message.includes('permission denied')) {
+          return NextResponse.json(
+            { error: 'You do not have permission to delete this post.' },
+            { status: 403 }
+          );
+        }
+        
+        return NextResponse.json(
+          { error: 'Failed to delete post', details: error.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Post deleted successfully'
+      });
+    } else {
+      // Delete all posts for this user (RLS policy will ensure they can only delete their own)
+      const { data, error } = await supabase
+        .from('community_posts')
+        .delete()
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('[posts DELETE] Error deleting posts:', error);
+        
+        // Check if it's an RLS policy violation
+        if (error.code === '42501' || error.message.includes('permission denied')) {
+          return NextResponse.json(
+            { error: 'You do not have permission to delete posts.' },
+            { status: 403 }
+          );
+        }
+        
+        return NextResponse.json(
+          { error: 'Failed to delete posts', details: error.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'All posts deleted successfully',
+        deletedCount: data?.length || 0
+      });
+    }
+  } catch (error) {
+    console.error('[posts DELETE] Error:', error);
     return NextResponse.json(
       { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
