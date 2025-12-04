@@ -55,11 +55,11 @@ export async function GET() {
     .limit(20);
 
   // Transform recent data to match AdminDashboard interface
+  // Note: IP is hashed for privacy, so we don't expose it
   const recent = (recentData.data || []).map((row) => ({
     id: row.id,
     timestamp: row.timestamp,
     page: row.page,
-    ip: row.ip_hash || undefined,
     userAgent: row.user_agent || undefined,
   }));
 
