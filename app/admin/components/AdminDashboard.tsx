@@ -16,6 +16,9 @@ interface VisitorStats {
     timestamp: string;
     page: string;
     userAgent?: string;
+    country?: string;
+    region?: string;
+    city?: string;
   }>;
 }
 
@@ -230,6 +233,7 @@ export default function AdminDashboard() {
                   <tr>
                     <th>Time</th>
                     <th>Page</th>
+                    <th>Location</th>
                     <th>User Agent</th>
                   </tr>
                 </thead>
@@ -238,6 +242,13 @@ export default function AdminDashboard() {
                     <tr key={visit.id}>
                       <td>{formatDate(visit.timestamp)}</td>
                       <td>{visit.page}</td>
+                      <td className={styles.location}>
+                        {visit.city && visit.region && visit.country
+                          ? `${visit.city}, ${visit.region}, ${visit.country}`
+                          : visit.country
+                          ? visit.country
+                          : 'Unknown'}
+                      </td>
                       <td className={styles.userAgent}>
                         {formatUserAgent(visit.userAgent)}
                       </td>

@@ -19,6 +19,9 @@ interface VisitorEventRow {
   page: string;
   ip_hash: string | null;
   user_agent: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
 }
 
 // Convert database row to Visitor interface
@@ -29,11 +32,9 @@ function rowToVisitor(row: VisitorEventRow): Visitor {
     page: row.page,
     ip: row.ip_hash || undefined, // Note: This is the hash, not the actual IP
     userAgent: row.user_agent || undefined,
-    // Note: referer, country, region, city are not in the database table
-    referer: undefined,
-    country: undefined,
-    region: undefined,
-    city: undefined,
+    country: row.country || undefined,
+    region: row.region || undefined,
+    city: row.city || undefined,
   };
 }
 
@@ -87,6 +88,9 @@ export async function addVisitor(visitor: Omit<Visitor, 'id' | 'timestamp'>): Pr
         page: visitor.page || 'unknown',
         ip_hash,
         user_agent: visitor.userAgent || null,
+        country: visitor.country || null,
+        region: visitor.region || null,
+        city: visitor.city || null,
       });
 
     if (error) {

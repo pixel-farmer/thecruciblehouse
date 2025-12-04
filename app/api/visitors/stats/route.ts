@@ -61,6 +61,9 @@ export async function GET() {
     timestamp: row.timestamp,
     page: row.page,
     userAgent: row.user_agent || undefined,
+    country: row.country || undefined,
+    region: row.region || undefined,
+    city: row.city || undefined,
   }));
 
 
