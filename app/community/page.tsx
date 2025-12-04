@@ -430,10 +430,10 @@ export default function CommunityPage() {
               </div>
             </ScrollAnimation>
 
-            {/* Column 3: Members Near Me / Meetups */}
+            {/* Column 3: Artists Near Me / Meetups */}
             <ScrollAnimation>
               <div className={styles.column}>
-                <h3 className={styles.columnTitle}>Members Near Me</h3>
+                <h3 className={styles.columnTitle}>Artists Near Me</h3>
                 
                 {hasPaidMembership ? (
                   <div className={styles.nearbyList}>
@@ -500,7 +500,55 @@ export default function CommunityPage() {
                   </div>
                 )}
 
-                <h4 className={styles.subsectionTitle}>Upcoming Events</h4>
+                <h4 className={styles.subsectionTitle}>Workshops & Meetups</h4>
+                <div className={styles.eventList}>
+                  <div className={styles.eventItem}>
+                    <h5 className={styles.eventName}>Artist Coffee Hour</h5>
+                    <p className={styles.eventDate}>March 15, 2025</p>
+                    <p className={styles.eventLocation}>Local Café</p>
+                  </div>
+                  <div className={styles.eventItem}>
+                    <h5 className={styles.eventName}>Creative Critique Session</h5>
+                    <p className={styles.eventDate}>March 22, 2025</p>
+                    <p className={styles.eventLocation}>Community Studio</p>
+                  </div>
+                  <div className={styles.eventItem}>
+                    <h5 className={styles.eventName}>Portfolio Review</h5>
+                    <p className={styles.eventDate}>March 28, 2025</p>
+                    <p className={styles.eventLocation}>Gallery Space</p>
+                  </div>
+                </div>
+
+                <button
+                  className={styles.hostMeetupButton}
+                  style={{
+                    width: '100%',
+                    padding: '12px 20px',
+                    marginTop: '15px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: '0.95rem',
+                    fontWeight: 500,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    borderRadius: '0.75rem',
+                    backgroundColor: '#ff6622',
+                    color: 'white',
+                    outline: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#e55a1a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ff6622';
+                  }}
+                >
+                  Host a Meetup
+                </button>
+
+                <h4 className={styles.subsectionTitle}>Nearby Exhibitions</h4>
                 <div className={styles.eventList}>
                   <div className={styles.eventItem}>
                     <h5 className={styles.eventName}>Portrait Workshop</h5>
