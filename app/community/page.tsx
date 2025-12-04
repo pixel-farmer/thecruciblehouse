@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Community.module.css';
@@ -340,19 +341,21 @@ export default function CommunityPage() {
                 <div className={styles.postFeed}>
                   {/* Post Composer */}
                   <div className={styles.postComposer}>
-                    {userAvatar && userAvatar.startsWith('http') ? (
-                      <div className={styles.postAvatarImage}>
-                        <Image
-                          src={userAvatar}
-                          alt="Profile"
-                          width={48}
-                          height={48}
-                          className={styles.postAvatarImg}
-                        />
-                      </div>
-                    ) : (
-                      <div className={styles.postAvatar}>{userInitials}</div>
-                    )}
+                    <Link href="/profile" style={{ textDecoration: 'none' }}>
+                      {userAvatar && userAvatar.startsWith('http') ? (
+                        <div className={styles.postAvatarImage}>
+                          <Image
+                            src={userAvatar}
+                            alt="Profile"
+                            width={48}
+                            height={48}
+                            className={styles.postAvatarImg}
+                          />
+                        </div>
+                      ) : (
+                        <div className={styles.postAvatar}>{userInitials}</div>
+                      )}
+                    </Link>
                     <div className={styles.composerContent}>
                       <textarea
                         className={styles.composerTextarea}
@@ -395,22 +398,26 @@ export default function CommunityPage() {
                   ) : (
                     posts.map((post) => (
                       <div key={post.id} className={styles.post}>
-                        {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                          <div className={styles.postAvatarImage}>
-                            <Image
-                              src={post.user_avatar}
-                              alt="Profile"
-                              width={48}
-                              height={48}
-                              className={styles.postAvatarImg}
-                            />
-                          </div>
-                        ) : (
-                          <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
-                        )}
+                        <Link href="/profile" style={{ textDecoration: 'none' }}>
+                          {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                            <div className={styles.postAvatarImage}>
+                              <Image
+                                src={post.user_avatar}
+                                alt="Profile"
+                                width={48}
+                                height={48}
+                                className={styles.postAvatarImg}
+                              />
+                            </div>
+                          ) : (
+                            <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                          )}
+                        </Link>
                         <div className={styles.postContent}>
                           <div className={styles.postHeader}>
-                            <span className={styles.postName}>{post.user_name || 'User'}</span>
+                            <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                              <span className={styles.postName}>{post.user_name || 'User'}</span>
+                            </Link>
                             <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
                             <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
                           </div>

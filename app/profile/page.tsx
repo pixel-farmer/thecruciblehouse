@@ -185,7 +185,7 @@ export default function ProfilePage() {
             {/* Profile Header */}
             <ScrollAnimation>
               <div className={styles.profileHeader}>
-                <div className={styles.avatarContainer}>
+                <Link href="/profile" className={styles.avatarContainer} style={{ textDecoration: 'none' }}>
                   {userAvatar ? (
                     <Image
                       src={userAvatar}
@@ -199,11 +199,13 @@ export default function ProfilePage() {
                       <span>{userInitials}</span>
                     </div>
                   )}
-                </div>
+                </Link>
                 <div className={styles.profileInfo}>
                   <div className={styles.profileHeaderTop}>
                     <div>
-                      <h3 className={styles.userName}>{userName}</h3>
+                      <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <h3 className={styles.userName}>{userName}</h3>
+                      </Link>
                       <p className={styles.userHandle}>{userHandle}</p>
                       <p className={styles.userMeta}>
                         {discipline || `Joined ${joinDate}`}
@@ -259,22 +261,26 @@ export default function ProfilePage() {
                   <div className={styles.postsList}>
                     {userPosts.map((post) => (
                       <div key={post.id} className={styles.post}>
-                        {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                          <div className={styles.postAvatarImage}>
-                            <Image
-                              src={post.user_avatar}
-                              alt="Profile"
-                              width={48}
-                              height={48}
-                              className={styles.postAvatarImg}
-                            />
-                          </div>
-                        ) : (
-                          <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
-                        )}
+                        <Link href="/profile" style={{ textDecoration: 'none' }}>
+                          {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                            <div className={styles.postAvatarImage}>
+                              <Image
+                                src={post.user_avatar}
+                                alt="Profile"
+                                width={48}
+                                height={48}
+                                className={styles.postAvatarImg}
+                              />
+                            </div>
+                          ) : (
+                            <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
+                          )}
+                        </Link>
                         <div className={styles.postContent}>
                           <div className={styles.postHeader}>
-                            <span className={styles.postName}>{post.user_name || userName}</span>
+                            <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                              <span className={styles.postName}>{post.user_name || userName}</span>
+                            </Link>
                             <span className={styles.postHandle}>{post.user_handle || userHandle}</span>
                             <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
                           </div>

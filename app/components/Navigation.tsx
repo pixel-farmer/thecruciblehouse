@@ -202,7 +202,8 @@ export default function Navigation() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', position: 'relative' }}>
                 {/* Profile Picture with Dropdown */}
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
-                  <div
+                  <Link
+                    href="/profile"
                     style={{
                       width: '50px',
                       height: '50px',
@@ -218,6 +219,7 @@ export default function Navigation() {
                       fontSize: '1.1rem',
                       fontWeight: 600,
                       transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+                      textDecoration: 'none',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.transform = 'scale(1.05)';
@@ -248,7 +250,7 @@ export default function Navigation() {
                     ) : (
                       <span>{userInitials || 'U'}</span>
                     )}
-                  </div>
+                  </Link>
 
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
