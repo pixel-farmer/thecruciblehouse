@@ -280,7 +280,8 @@ export async function DELETE(request: NextRequest) {
       const { data, error } = await supabase
         .from('community_posts')
         .delete()
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select(); // Add select to get deleted rows
 
       if (error) {
         console.error('[posts DELETE] Error deleting posts:', error);
@@ -302,7 +303,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ 
         success: true, 
         message: 'All posts deleted successfully',
-        deletedCount: data?.length || 0
+        deletedCount: Array.isArray(data) ? data.length : 0
       });
     }
   } catch (error) {
