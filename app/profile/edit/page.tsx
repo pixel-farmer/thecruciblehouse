@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -17,11 +17,17 @@ export default function EditProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [bioText, setBioText] = useState('');
+  const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
+  const initialLoadComplete = useRef(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuthAndLoadProfile = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (error || !session || !session.user) {
           router.push('/login');
@@ -31,10 +37,15 @@ export default function EditProfilePage() {
         setUser(session.user);
         const userBio = session.user.user_metadata?.bio || '';
         setBioText(userBio);
+        const mediums = session.user.user_metadata?.favorite_mediums || [];
+        setSelectedMediums(Array.isArray(mediums) ? mediums : []);
         setLoading(false);
+        initialLoadComplete.current = true;
       } catch (error) {
         console.error('Error checking auth:', error);
-        router.push('/login');
+        if (isMounted) {
+          router.push('/login');
+        }
       }
     };
 
@@ -44,12 +55,30 @@ export default function EditProfilePage() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+      
       if (!session) {
-        router.push('/login');
+        // Only redirect if we've finished initial loading check
+        if (initialLoadComplete.current) {
+          router.push('/login');
+        }
+      } else if (session.user) {
+        setUser(session.user);
+        const userBio = session.user.user_metadata?.bio || '';
+        setBioText(userBio);
+        const mediums = session.user.user_metadata?.favorite_mediums || [];
+        setSelectedMediums(Array.isArray(mediums) ? mediums : []);
+        if (!initialLoadComplete.current) {
+          setLoading(false);
+          initialLoadComplete.current = true;
+        }
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [router]);
 
   const normalizeUrl = (url: string): string => {
@@ -91,6 +120,7 @@ export default function EditProfilePage() {
   const bio = user.user_metadata?.bio || '';
   const discipline = user.user_metadata?.discipline || '';
   const handle = user.user_metadata?.handle || '';
+  const favoriteMediums = user.user_metadata?.favorite_mediums || [];
   
   // Display portfolio URL without protocol prefix in the input
   const displayPortfolioUrl = portfolioUrl ? portfolioUrl.replace(/^https?:\/\//i, '') : '';
@@ -123,6 +153,15 @@ export default function EditProfilePage() {
       const portfolioUrlInput = formData.get('portfolioUrl') as string;
       const bioInput = formData.get('bio') as string;
       const fileInput = formData.get('profilePicture') as File | null;
+      
+      // Get selected mediums from checkboxes
+      const selectedMediumsArray: string[] = [];
+      const mediumCheckboxes = formData.getAll('medium') as string[];
+      mediumCheckboxes.forEach(medium => {
+        if (medium && !selectedMediumsArray.includes(medium)) {
+          selectedMediumsArray.push(medium);
+        }
+      });
 
       // Normalize portfolio URL (add https:// if missing)
       const normalizedPortfolioUrl = portfolioUrlInput && portfolioUrlInput.trim()
@@ -231,6 +270,9 @@ export default function EditProfilePage() {
         const trimmedBio = bioInput.trim();
         updatedMetadata.bio = trimmedBio || null;
       }
+      
+      // Update favorite mediums
+      updatedMetadata.favorite_mediums = selectedMediumsArray.length > 0 ? selectedMediumsArray : null;
 
       console.log('Updating user metadata:', {
         hasAvatar: shouldUpdateAvatar,
@@ -288,7 +330,7 @@ export default function EditProfilePage() {
                     Bio
                   </Link>
                   <Link href="#experience" className={styles.navLink}>
-                    Experience
+                    Favorite Mediums
                   </Link>
                   <Link href="#socials" className={styles.navLink}>
                     Socials
@@ -443,14 +485,126 @@ export default function EditProfilePage() {
                   </div>
                 </ScrollAnimation>
 
-                {/* Experience Section */}
+                {/* Favorite Mediums Section */}
                 <ScrollAnimation>
                   <div id="experience" className={styles.profileSection}>
-                    <h3 className={styles.sectionHeading}>Experience</h3>
+                    <h3 className={styles.sectionHeading}>Favorite Mediums</h3>
                     <div className={styles.sectionContent}>
-                      <p className={styles.emptySectionText}>
-                        Experience section coming soon.
-                      </p>
+                      <div className={styles.mediumsGrid}>
+                        {/* Traditional */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>Traditional</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['Drawing', 'Charcoal', 'Graphite', 'Ink', 'Watercolor', 'Acrylic', 'Oil', 'Gouache', 'Pastel', 'Mixed Media', 'Printmaking'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* 3D & Sculpture */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>3D & Sculpture</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['Clay', 'Ceramic', 'Woodworking', 'Metal Sculpture', 'Stone Sculpture', 'Mixed Sculpture', '3D Modeling', '3D Printing'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Digital */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>Digital</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['Digital Painting', 'Illustration', 'Graphic Design', 'Vector Art', 'Pixel Art', 'Animation (2D)', 'Animation (3D)', 'Motion Graphics'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Photography */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>Photography</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['Photography', 'Film Photography', 'Photo Manipulation'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Crafts & Textile */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>Crafts & Textile</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['Fiber Arts', 'Embroidery', 'Weaving', 'Jewelry', 'Fashion Design'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Experimental / Other */}
+                        <div className={styles.mediumCategory}>
+                          <h4 className={styles.categoryTitle}>Experimental / Other</h4>
+                          <div className={styles.checkboxGroup}>
+                            {['AI-Assisted Art', 'VR Art', 'Generative Art', 'Installation Art', 'Performance Art'].map((medium) => (
+                              <label key={medium} className={styles.checkboxLabel}>
+                                <input
+                                  type="checkbox"
+                                  name="medium"
+                                  value={medium}
+                                  defaultChecked={favoriteMediums.includes(medium)}
+                                  className={styles.checkbox}
+                                />
+                                <span>{medium}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </ScrollAnimation>

@@ -1,12 +1,69 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Resources.module.css';
 
 export default function ResourcesPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [trendingMediums, setTrendingMediums] = useState<string[]>([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTrendingMediums = async () => {
+      try {
+        setTrendingLoading(true);
+        const response = await fetch('/api/trending-mediums');
+        
+        console.log('[Resources] Response status:', response.status);
+        console.log('[Resources] Response headers:', Object.fromEntries(response.headers.entries()));
+        
+        // Clone the response so we can read it multiple times if needed
+        const responseClone = response.clone();
+        const text = await response.text();
+        console.log('[Resources] Raw response text:', text);
+        console.log('[Resources] Response text length:', text.length);
+        
+        let data;
+        try {
+          if (text.trim() === '') {
+            console.warn('[Resources] Empty response body');
+            data = { error: 'Empty response', message: 'The server returned an empty response' };
+          } else {
+            data = JSON.parse(text);
+            console.log('[Resources] Parsed JSON data:', data);
+          }
+        } catch (parseError) {
+          console.error('[Resources] Failed to parse JSON:', parseError);
+          console.error('[Resources] Raw text that failed to parse:', text);
+          data = { error: 'Invalid JSON response', message: 'Failed to parse server response', raw: text.substring(0, 500) };
+        }
+        
+        if (response.ok) {
+          if (data.trending && Array.isArray(data.trending)) {
+            // Extract just the names from the trending array
+            const mediumNames = data.trending.map((item: { name: string; count: number }) => item.name);
+            setTrendingMediums(mediumNames);
+            console.log('[Resources] Set trending mediums:', mediumNames);
+          } else {
+            console.warn('[Resources] No trending mediums in response:', data);
+            setTrendingMediums([]);
+          }
+        } else {
+          console.error('[Resources] Failed to fetch trending mediums. Status:', response.status, 'Error:', data);
+          setTrendingMediums([]);
+        }
+      } catch (error) {
+        console.error('[Resources] Error fetching trending mediums:', error);
+        setTrendingMediums([]);
+      } finally {
+        setTrendingLoading(false);
+      }
+    };
+
+    fetchTrendingMediums();
+  }, []);
 
   const articles = [
     {
@@ -134,36 +191,22 @@ export default function ResourcesPage() {
             <aside className={styles.sidebar}>
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Recently Active Members</h3>
-                  <div className={styles.memberList}>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JD</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>John Doe</p>
-                        <p className={styles.memberActivity}>Active 2 hours ago</p>
-                      </div>
-                    </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JS</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Jane Smith</p>
-                        <p className={styles.memberActivity}>Active 5 hours ago</p>
-                      </div>
-                    </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>AB</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Alex Brown</p>
-                        <p className={styles.memberActivity}>Active 1 day ago</p>
-                      </div>
-                    </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>MC</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Mike Chen</p>
-                        <p className={styles.memberActivity}>Active 1 day ago</p>
-                      </div>
-                    </div>
+                  <h3 className={styles.sidebarTitle}>Trending Mediums</h3>
+                  <div className={styles.trendingMediumsList}>
+                    {trendingLoading ? (
+                      <p className={styles.loadingText}>Loading...</p>
+                    ) : trendingMediums.length > 0 ? (
+                      <ol className={styles.trendingList}>
+                        {trendingMediums.map((medium, index) => (
+                          <li key={medium} className={styles.trendingItem}>
+                            <span className={styles.trendingRank}>{index + 1}</span>
+                            <span className={styles.trendingMedium}>{medium}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className={styles.emptyText}>No trending mediums yet</p>
+                    )}
                   </div>
                 </div>
               </ScrollAnimation>

@@ -172,6 +172,7 @@ export default function ProfilePage() {
   const portfolioUrl = user.user_metadata?.portfolio_url || '';
   const bio = user.user_metadata?.bio || '';
   const discipline = user.user_metadata?.discipline || '';
+  const favoriteMediums = user.user_metadata?.favorite_mediums || [];
 
   return (
     <motion.div
@@ -239,6 +240,22 @@ export default function ProfilePage() {
                 <div className={styles.bioSection}>
                   <h4 className={styles.bioTitle}>Bio</h4>
                   <p className={styles.bioText}>{bio}</p>
+                </div>
+              </ScrollAnimation>
+            )}
+
+            {/* Favorite Mediums Section */}
+            {favoriteMediums && Array.isArray(favoriteMediums) && favoriteMediums.length > 0 && (
+              <ScrollAnimation>
+                <div className={styles.mediumsSection}>
+                  <h4 className={styles.mediumsTitle}>Favorite Mediums</h4>
+                  <div className={styles.mediumsList}>
+                    {favoriteMediums.map((medium: string, index: number) => (
+                      <span key={index} className={styles.mediumTag}>
+                        {medium}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </ScrollAnimation>
             )}
