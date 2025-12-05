@@ -41,29 +41,26 @@
 }
 
 .column {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.sidebarSection {
   background-color: var(--white);
-  padding: 30px;
+  padding: 25px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.columnTitle {
-  font-family: var(--font-playfair), serif;
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin-bottom: 25px;
-  color: var(--primary-color);
-  border-bottom: 2px solid var(--accent-color);
-  padding-bottom: 10px;
-}
-
-.subsectionTitle {
+.sidebarTitle {
   font-family: var(--font-playfair), serif;
   font-size: 1.4rem;
-  font-weight: 500;
-  margin-top: 30px;
-  margin-bottom: 15px;
+  font-weight: 600;
   color: var(--primary-color);
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 10px;
 }
 
 /* Column 1: Members & Groups */
@@ -74,27 +71,25 @@
   gap: 15px;
 }
 
-.memberItem,
-.groupItem {
+.memberItem {
   display: flex;
   align-items: center;
-  gap: 15px;
-  padding: 15px;
+  gap: 12px;
+  padding: 12px;
   background-color: var(--secondary-color);
   border-radius: 6px;
   transition: all 0.3s ease;
 }
 
-.memberItem:hover,
-.groupItem:hover {
+.memberItem:hover {
   transform: translateX(5px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .memberAvatar,
 .nearbyAvatar {
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   border-radius: 50%;
   background-color: var(--accent-color);
   color: var(--white);
@@ -102,7 +97,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 1.1rem;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 
@@ -112,7 +107,31 @@
 }
 
 .memberName,
-.nearbyName,
+.nearbyName {
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 3px;
+  font-size: 0.95rem;
+}
+
+.memberActivity,
+.nearbyDistance {
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.groupItem {
+  padding: 15px;
+  background-color: var(--secondary-color);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.groupItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
 .groupName {
   font-weight: 600;
   color: var(--text-dark);
@@ -120,16 +139,9 @@
   font-size: 1rem;
 }
 
-.memberActivity,
-.nearbyDistance,
 .groupMembers {
   font-size: 0.85rem;
   color: var(--text-light);
-}
-
-.groupName {
-  font-size: 1.1rem;
-  margin-bottom: 5px;
 }
 
 /* Column 2: Twitter-like Post Feed */
