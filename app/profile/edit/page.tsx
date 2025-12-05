@@ -533,7 +533,7 @@ export default function EditProfilePage() {
                         <div className={styles.mediumCategory}>
                           <h4 className={styles.categoryTitle}>Digital</h4>
                           <div className={styles.checkboxGroup}>
-                            {['Digital Painting', 'Illustration', 'Graphic Design', 'Vector Art', 'Pixel Art', 'Animation (2D)', 'Animation (3D)', 'Motion Graphics'].map((medium) => (
+                            {['Digital Painting', 'Illustration', 'Graphic Design', 'Vector Art', 'Pixel Art', 'Voxel Art', 'Animation (2D)', 'Animation (3D)', 'Motion Graphics'].map((medium) => (
                               <label key={medium} className={styles.checkboxLabel}>
                                 <input
                                   type="checkbox"
@@ -552,7 +552,7 @@ export default function EditProfilePage() {
                         <div className={styles.mediumCategory}>
                           <h4 className={styles.categoryTitle}>Photography</h4>
                           <div className={styles.checkboxGroup}>
-                            {['Photography', 'Film Photography', 'Photo Manipulation'].map((medium) => (
+                            {['Photography', 'Film Photography', 'Photo Manipulation', 'Virtual Photography'].map((medium) => (
                               <label key={medium} className={styles.checkboxLabel}>
                                 <input
                                   type="checkbox"
@@ -590,7 +590,7 @@ export default function EditProfilePage() {
                         <div className={styles.mediumCategory}>
                           <h4 className={styles.categoryTitle}>Experimental / Other</h4>
                           <div className={styles.checkboxGroup}>
-                            {['AI-Assisted Art', 'VR Art', 'Generative Art', 'Installation Art', 'Performance Art'].map((medium) => (
+                            {['VR Art', 'Installation Art', 'Performance Art'].map((medium) => (
                               <label key={medium} className={styles.checkboxLabel}>
                                 <input
                                   type="checkbox"
