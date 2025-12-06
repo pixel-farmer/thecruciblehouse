@@ -48,6 +48,15 @@
   gap: 40px;
 }
 
+/* Remove gap between tab navigation and bio section */
+.profileContent > *:has(.tabNavigation) {
+  margin-bottom: 0 !important;
+}
+
+.profileContent > *:has(.bioSection) {
+  margin-top: 0 !important;
+}
+
 /* Sidebar Navigation */
 .sidebar {
   position: sticky;
@@ -304,10 +313,11 @@
 
 /* Bio Section */
 .bioSection {
-  background-color: var(--white);
+  background-color: transparent;
   padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .bioTitle {
@@ -332,11 +342,11 @@
 
 /* Favorite Mediums Section */
 .mediumsSection {
-  background-color: var(--white);
-  padding: 40px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  margin-bottom: 30px;
+  background-color: transparent;
+  padding: 0 40px 40px 40px;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
 }
 
 .mediumsTitle {
@@ -375,12 +385,68 @@
   border-color: var(--accent-color);
 }
 
-/* Posts Section */
-.postsSection {
+/* Combined Profile Box */
+.profileBox {
   background-color: var(--white);
-  padding: 40px;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  margin-top: 40px;
+  overflow: hidden;
+}
+
+/* Tab Navigation */
+.tabNavigation {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border-color);
+  background-color: transparent;
+  padding: 0 40px;
+  margin: 0;
+}
+
+.tabButton {
+  padding: 16px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-family: var(--font-inter);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+}
+
+.tabButton:hover {
+  color: var(--text-dark);
+  background-color: var(--secondary-color);
+}
+
+.tabButtonActive {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
+  font-weight: 600;
+}
+
+.tabButtonActive:hover {
+  color: var(--accent-color);
+  background-color: transparent;
+}
+
+.tabContent {
+  background-color: var(--white);
+  padding: 40px;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Posts Section */
+.postsSection {
+  background-color: transparent;
+  padding: 40px;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .postsTitle {
@@ -843,5 +909,34 @@
   .modalForm {
     padding: 20px;
   }
+
+  .tabNavigation {
+    padding: 0 20px;
+    flex-wrap: wrap;
+  }
+
+  .tabButton {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Artwork Section */
+.artworkSection {
+  background-color: transparent;
+  padding: 40px;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+
+.artworkTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0 0 20px 0;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
 }
 

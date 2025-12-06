@@ -15,6 +15,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork'>('profile');
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -237,108 +238,173 @@ export default function ProfilePage() {
               </div>
             </ScrollAnimation>
 
-            {/* Bio Section */}
-            {(bio || portfolioUrl) && (
-              <ScrollAnimation>
-                <div className={styles.bioSection}>
-                  <h4 className={styles.bioTitle}>Bio</h4>
-                  {bio && (
-                    <p className={styles.bioText}>{bio}</p>
-                  )}
-                  {portfolioUrl && (
-                    <a 
-                      href={portfolioUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.portfolioLink}
-                      style={{ 
-                        display: 'inline-block', 
-                        marginTop: bio ? '16px' : '0',
-                        color: 'var(--accent-color)',
-                        textDecoration: 'none',
-                        fontFamily: 'var(--font-inter)',
-                        fontSize: '0.95rem',
-                        fontWeight: 500
-                      }}
-                    >
-                      {portfolioUrl.replace(/^https?:\/\//i, '')}
-                    </a>
-                  )}
-                </div>
-              </ScrollAnimation>
-            )}
-
-            {/* Favorite Mediums Section */}
-            {favoriteMediums && Array.isArray(favoriteMediums) && favoriteMediums.length > 0 && (
-              <ScrollAnimation>
-                <div className={styles.mediumsSection}>
-                  <h4 className={styles.mediumsTitle}>Favorite Mediums</h4>
-                  <div className={styles.mediumsList}>
-                    {favoriteMediums.map((medium: string, index: number) => (
-                      <span key={index} className={styles.mediumTag}>
-                        {medium}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </ScrollAnimation>
-            )}
-
-            {/* User Posts Section */}
+            {/* Combined Profile Box: Nav, Bio, Favorite Mediums, or Posts */}
             <ScrollAnimation>
-              <div className={styles.postsSection}>
-                <h4 className={styles.postsTitle}>My Posts ({userPosts.length})</h4>
-                
-                {postsLoading ? (
-                  <div className={styles.loading}>Loading posts...</div>
-                ) : userPosts.length === 0 ? (
-                  <div className={styles.emptyState}>
-                    <p>You haven't posted anything yet.</p>
-                    <a href="/community" className={styles.linkToCommunity}>
-                      Go to Community →
-                    </a>
-                  </div>
-                ) : (
-                  <div className={styles.postsList}>
-                    {userPosts.map((post) => (
-                      <div key={post.id} className={styles.post}>
-                        <Link href="/profile" style={{ textDecoration: 'none' }}>
-                          {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                            <div className={styles.postAvatarImage}>
-                              <Image
-                                src={post.user_avatar}
-                                alt="Profile"
-                                width={48}
-                                height={48}
-                                className={styles.postAvatarImg}
-                              />
-                            </div>
-                          ) : (
-                            <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
-                          )}
-                        </Link>
-                        <div className={styles.postContent}>
-                          <div className={styles.postHeader}>
-                            <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                              <span className={styles.postName}>{post.user_name || userName}</span>
-                            </Link>
-                            <span className={styles.postHandle}>{post.user_handle || userHandle}</span>
-                            <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
-                          </div>
-                          <p className={styles.postText}>{post.content}</p>
-                          <div className={styles.postFooter}>
-                            <p className={styles.postDate}>{formatDate(post.created_at)}</p>
-                            <button
-                              onClick={() => handleDeletePost(post.id)}
-                              className={styles.deleteButton}
-                              title="Delete post"
-                            >
-                              Delete
-                            </button>
-                          </div>
+              <div className={styles.profileBox}>
+                {/* Tab Navigation */}
+                <div className={styles.tabNavigation}>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'profile' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('profile')}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'posts' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('posts')}
+                  >
+                    Posts
+                  </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'artwork' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('artwork')}
+                  >
+                    Artwork
+                  </button>
+                </div>
+
+                {/* Profile Tab Content */}
+                {activeTab === 'profile' && (
+                  <>
+                    {/* Bio Section */}
+                    {(bio || portfolioUrl) && (
+                      <div className={styles.bioSection}>
+                        <h4 className={styles.bioTitle}>Bio</h4>
+                        {bio && (
+                          <p className={styles.bioText}>{bio}</p>
+                        )}
+                        {portfolioUrl && (
+                          <a 
+                            href={portfolioUrl} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className={styles.portfolioLink}
+                            style={{ 
+                              display: 'inline-block', 
+                              marginTop: bio ? '16px' : '0',
+                              color: 'var(--accent-color)',
+                              textDecoration: 'none',
+                              fontFamily: 'var(--font-inter)',
+                              fontSize: '0.95rem',
+                              fontWeight: 500
+                            }}
+                          >
+                            {portfolioUrl.replace(/^https?:\/\//i, '')}
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Favorite Mediums Section */}
+                    {favoriteMediums && Array.isArray(favoriteMediums) && favoriteMediums.length > 0 && (
+                      <div className={styles.mediumsSection}>
+                        <h4 className={styles.mediumsTitle}>Favorite Mediums</h4>
+                        <div className={styles.mediumsList}>
+                          {favoriteMediums.map((medium: string, index: number) => (
+                            <span key={index} className={styles.mediumTag}>
+                              {medium}
+                            </span>
+                          ))}
                         </div>
                       </div>
-                    ))}
+                    )}
+                  </>
+                )}
+
+                {/* Posts Tab Content */}
+                {activeTab === 'posts' && (
+                  <div className={styles.postsSection}>
+                    <h4 className={styles.postsTitle}>My Posts ({userPosts.length})</h4>
+                    
+                    {postsLoading ? (
+                      <div className={styles.loading}>Loading posts...</div>
+                    ) : userPosts.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        <p>You haven't posted anything yet.</p>
+                        <a href="/community" className={styles.linkToCommunity}>
+                          Go to Community →
+                        </a>
+                      </div>
+                    ) : (
+                      <div className={styles.postsList}>
+                        {userPosts.map((post) => (
+                          <div key={post.id} className={styles.post}>
+                            <Link href="/profile" style={{ textDecoration: 'none' }}>
+                              {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                                <div className={styles.postAvatarImage}>
+                                  <Image
+                                    src={post.user_avatar}
+                                    alt="Profile"
+                                    width={48}
+                                    height={48}
+                                    className={styles.postAvatarImg}
+                                  />
+                                </div>
+                              ) : (
+                                <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
+                              )}
+                            </Link>
+                            <div className={styles.postContent}>
+                              <div className={styles.postHeader}>
+                                <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                  <span className={styles.postName}>{post.user_name || userName}</span>
+                                </Link>
+                                <span className={styles.postHandle}>{post.user_handle || userHandle}</span>
+                                <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                              </div>
+                              <p className={styles.postText}>{post.content}</p>
+                              <div className={styles.postFooter}>
+                                <p className={styles.postDate}>{formatDate(post.created_at)}</p>
+                                <button
+                                  onClick={() => handleDeletePost(post.id)}
+                                  className={styles.deleteButton}
+                                  title="Delete post"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Artwork Tab Content */}
+                {activeTab === 'artwork' && (
+                  <div className={styles.artworkSection}>
+                    <h4 className={styles.artworkTitle}>Artwork</h4>
+                    <div className={styles.emptyState}>
+                      <p>No artwork uploaded yet.</p>
+                      <button
+                        style={{
+                          fontSize: '0.95rem',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontFamily: 'var(--font-inter)',
+                          borderRadius: '20px',
+                          backgroundColor: '#ff6622',
+                          color: 'white',
+                          outline: 'none',
+                          border: 'none',
+                          textDecoration: 'none',
+                          transition: 'background-color 0.2s ease',
+                          padding: '8px 20px',
+                          cursor: 'pointer',
+                          marginTop: '16px',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#e55a1a';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#ff6622';
+                        }}
+                      >
+                        UPLOAD
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
