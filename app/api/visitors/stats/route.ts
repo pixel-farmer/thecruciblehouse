@@ -66,7 +66,49 @@ export async function GET() {
     city: row.city || undefined,
   }));
 
+  // Calculate unique location visits
+  // Group by location and count distinct days per location
+  const allVisitsData = await supabase
+    .from("visitor_events")
+    .select("city, region, country, timestamp")
+    .order("timestamp", { ascending: false });
 
+  const locationVisits: Record<string, number> = {};
+  const locationDays: Record<string, Set<string>> = {};
+
+  (allVisitsData.data || []).forEach((row) => {
+    const city = row.city || '';
+    const region = row.region || '';
+    const country = row.country || '';
+    
+    // Create location key
+    let locationKey = 'Unknown';
+    if (city && region && country) {
+      locationKey = `${city}, ${region}, ${country}`;
+    } else if (city && country) {
+      locationKey = `${city}, ${country}`;
+    } else if (region && country) {
+      locationKey = `${region}, ${country}`;
+    } else if (country) {
+      locationKey = country;
+    }
+
+    // Get date string (YYYY-MM-DD) to count unique days
+    const visitDate = new Date(row.timestamp).toISOString().split('T')[0];
+
+    // Initialize location if not exists
+    if (!locationDays[locationKey]) {
+      locationDays[locationKey] = new Set();
+    }
+
+    // Add this date to the set (Set automatically handles duplicates)
+    locationDays[locationKey].add(visitDate);
+  });
+
+  // Count unique days per location
+  Object.keys(locationDays).forEach((location) => {
+    locationVisits[location] = locationDays[location].size;
+  });
 
   return NextResponse.json({
 
@@ -81,6 +123,8 @@ export async function GET() {
     pages,
 
     recent,
+
+    locationVisits: locationVisits,
 
     timestamp: new Date().toISOString()
 

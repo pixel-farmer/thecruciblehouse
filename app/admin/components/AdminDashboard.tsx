@@ -11,6 +11,7 @@ interface VisitorStats {
   last7Days: number;
   last30Days: number;
   pages: Record<string, number>;
+  locationVisits?: Record<string, number>;
   recent: Array<{
     id: string;
     timestamp: string;
@@ -215,6 +216,29 @@ export default function AdminDashboard() {
                 ))
             ) : (
               <p className={styles.emptyMessage}>No page visits recorded yet</p>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className={styles.section}
+        >
+          <h2 className={styles.sectionTitle}>Unique Location Visits</h2>
+          <div className={styles.pagesList}>
+            {stats && stats.locationVisits && Object.entries(stats.locationVisits).length > 0 ? (
+              Object.entries(stats.locationVisits)
+                .sort(([, a], [, b]) => (b as number) - (a as number))
+                .map(([location, count]) => (
+                  <div key={location} className={styles.pageItem}>
+                    <span className={styles.pageName}>{location}</span>
+                    <span className={styles.pageCount}>{count} {count === 1 ? 'visit' : 'visits'}</span>
+                  </div>
+                ))
+            ) : (
+              <p className={styles.emptyMessage}>No location visits recorded yet</p>
             )}
           </div>
         </motion.div>
