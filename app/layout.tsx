@@ -19,7 +19,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'The Crucible House | Art Gallery',
+  title: 'The Crucible House | Where Art is Forged',
   description: 'The Crucible House - Where Art is Forged',
 };
 

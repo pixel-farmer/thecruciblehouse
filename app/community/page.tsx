@@ -21,6 +21,7 @@ export default function CommunityPage() {
   const [posts, setPosts] = useState<any[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [isMapFullscreen, setIsMapFullscreen] = useState(false);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -468,6 +469,58 @@ export default function CommunityPage() {
                     </div>
                   ) : (
                     <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        aspectRatio: '1 / 1',
+                        marginBottom: '1rem',
+                        borderRadius: '8px',
+                        overflow: 'hidden',
+                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                        position: 'relative'
+                      }}>
+                        <iframe
+                          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1841336039!2d-74.00594138459418!3d40.71277597932672!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a2976a1d5a9%3A0xc90f8fdffbcf390!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          allowFullScreen
+                          loading="lazy"
+                          referrerPolicy="no-referrer-when-downgrade"
+                        />
+                        <button
+                          onClick={() => setIsMapFullscreen(true)}
+                          style={{
+                            position: 'absolute',
+                            top: '10px',
+                            right: '10px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                            border: '1px solid rgba(0, 0, 0, 0.1)',
+                            borderRadius: '6px',
+                            padding: '8px 12px',
+                            cursor: 'pointer',
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '1.2rem',
+                            color: 'var(--text-dark)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                            transition: 'all 0.2s ease',
+                            zIndex: 10
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                          title="View fullscreen map"
+                        >
+                          <span style={{ lineHeight: 1 }}>[ ]</span>
+                        </button>
+                      </div>
                       <p style={{ 
                         color: 'var(--text-light)', 
                         fontFamily: 'var(--font-inter)',
@@ -477,22 +530,21 @@ export default function CommunityPage() {
                         Upgrade to a paid membership to see members near you and connect with local artists.
                       </p>
                       <button
-                        className="inline-block py-2 rounded-xl focus:outline-none"
+                        className="inline-block focus:outline-none"
                         style={{
                           fontSize: '0.95rem',
-                          fontWeight: 500,
+                          fontWeight: 600,
                           textTransform: 'uppercase',
                           letterSpacing: '1px',
                           fontFamily: 'var(--font-inter)',
-                          borderRadius: '0.75rem',
+                          borderRadius: '20px',
                           backgroundColor: '#ff6622',
                           color: 'white',
                           outline: 'none',
                           border: 'none',
                           textDecoration: 'none',
-                          transition: 'background-color 0.3s ease',
-                          paddingLeft: '10px',
-                          paddingRight: '10px',
+                          transition: 'background-color 0.2s ease',
+                          padding: '8px 20px',
                           cursor: 'pointer',
                         }}
                         onMouseEnter={(e) => {
@@ -533,20 +585,20 @@ export default function CommunityPage() {
                     className={styles.hostMeetupButton}
                     style={{
                       width: '100%',
-                      padding: '12px 20px',
+                      padding: '8px 20px',
                       marginTop: '15px',
                       fontFamily: 'var(--font-inter)',
                       fontSize: '0.95rem',
-                      fontWeight: 500,
+                      fontWeight: 600,
                       textTransform: 'uppercase',
                       letterSpacing: '1px',
-                      borderRadius: '0.75rem',
+                      borderRadius: '20px',
                       backgroundColor: '#ff6622',
                       color: 'white',
                       outline: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      transition: 'background-color 0.3s ease',
+                      transition: 'background-color 0.2s ease',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = '#e55a1a';
@@ -586,6 +638,75 @@ export default function CommunityPage() {
           </div>
         </div>
       </section>
+
+      {/* Fullscreen Map Modal */}
+      {isMapFullscreen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.95)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '20px'
+          }}
+        >
+          <div style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <button
+              onClick={() => setIsMapFullscreen(false)}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                border: '1px solid rgba(0, 0, 0, 0.1)',
+                borderRadius: '6px',
+                padding: '10px 14px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '1.3rem',
+                color: 'var(--text-dark)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
+                zIndex: 10000
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+              title="Exit fullscreen"
+            >
+              <span style={{ lineHeight: 1 }}>[X]</span>
+            </button>
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1841336039!2d-74.00594138459418!3d40.71277597932672!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a2976a1d5a9%3A0xc90f8fdffbcf390!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
+              width="100%"
+              height="100%"
+              style={{ border: 0, borderRadius: '8px' }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

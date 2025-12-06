@@ -18,6 +18,10 @@ export default function EditProfilePage() {
   const [success, setSuccess] = useState(false);
   const [bioText, setBioText] = useState('');
   const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [cityPublic, setCityPublic] = useState(true);
+  const [statePublic, setStatePublic] = useState(true);
   const initialLoadComplete = useRef(false);
 
   useEffect(() => {
@@ -68,6 +72,12 @@ export default function EditProfilePage() {
         setBioText(userBio);
         const mediums = session.user.user_metadata?.favorite_mediums || [];
         setSelectedMediums(Array.isArray(mediums) ? mediums : []);
+        const userCity = session.user.user_metadata?.city || '';
+        setCity(userCity);
+        const userState = session.user.user_metadata?.state || '';
+        setState(userState);
+        setCityPublic(session.user.user_metadata?.city_public !== false);
+        setStatePublic(session.user.user_metadata?.state_public !== false);
         if (!initialLoadComplete.current) {
           setLoading(false);
           initialLoadComplete.current = true;
@@ -273,6 +283,17 @@ export default function EditProfilePage() {
       
       // Update favorite mediums
       updatedMetadata.favorite_mediums = selectedMediumsArray.length > 0 ? selectedMediumsArray : null;
+      
+      // Update location fields
+      const cityInput = formData.get('city') as string;
+      const stateInput = formData.get('state') as string;
+      const cityPublicInput = formData.get('cityPublic') === 'on' || formData.get('cityPublic') === 'true';
+      const statePublicInput = formData.get('statePublic') === 'on' || formData.get('statePublic') === 'true';
+      
+      updatedMetadata.city = cityInput && cityInput.trim() ? cityInput.trim() : null;
+      updatedMetadata.city_public = cityPublicInput;
+      updatedMetadata.state = stateInput && stateInput.trim() ? stateInput.trim() : null;
+      updatedMetadata.state_public = statePublicInput;
 
       console.log('Updating user metadata:', {
         hasAvatar: shouldUpdateAvatar,
@@ -440,25 +461,123 @@ export default function EditProfilePage() {
                         </p>
                       </div>
 
-                      <div className={styles.formGroup}>
-                        <label htmlFor="modalPortfolioUrl" className={styles.formLabel}>
-                          Portfolio/Website URL
-                        </label>
-                        <input
-                          id="modalPortfolioUrl"
-                          name="portfolioUrl"
-                          type="text"
-                          placeholder="yourportfolio.com"
-                          defaultValue={displayPortfolioUrl}
-                          className={styles.formInput}
-                        />
-                        <p className={styles.fileHint}>
-                          Enter URL without http:// or https:// (will be added automatically)
-                        </p>
+                        <div className={styles.formGroup}>
+                          <label htmlFor="modalPortfolioUrl" className={styles.formLabel}>
+                            Portfolio/Website URL
+                          </label>
+                          <input
+                            id="modalPortfolioUrl"
+                            name="portfolioUrl"
+                            type="text"
+                            placeholder="yourportfolio.com"
+                            defaultValue={displayPortfolioUrl}
+                            className={styles.formInput}
+                          />
+                          <p className={styles.fileHint}>
+                            Enter URL without http:// or https:// (will be added automatically)
+                          </p>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                          <label htmlFor="city" className={styles.formLabel}>
+                            City
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <input
+                              id="city"
+                              name="city"
+                              type="text"
+                              placeholder="Your city"
+                              value={city}
+                              onChange={(e) => setCity(e.target.value)}
+                              className={styles.formInput}
+                              maxLength={100}
+                              style={{ flex: 1 }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="hidden"
+                                name="cityPublic"
+                                value={cityPublic ? 'true' : 'false'}
+                              />
+                              <label style={{ 
+                                fontSize: '0.85rem', 
+                                color: 'var(--text-light)',
+                                fontFamily: 'var(--font-inter)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={cityPublic}
+                                  onChange={(e) => setCityPublic(e.target.checked)}
+                                  style={{ 
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--accent-color)'
+                                  }}
+                                />
+                                <span>Public</span>
+                              </label>
+                            </div>
+                          </div>
+                          <p className={styles.fileHint}>
+                            Your city location (optional)
+                          </p>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                          <label htmlFor="state" className={styles.formLabel}>
+                            State
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <input
+                              id="state"
+                              name="state"
+                              type="text"
+                              placeholder="Your state"
+                              value={state}
+                              onChange={(e) => setState(e.target.value)}
+                              className={styles.formInput}
+                              maxLength={100}
+                              style={{ flex: 1 }}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="hidden"
+                                name="statePublic"
+                                value={statePublic ? 'true' : 'false'}
+                              />
+                              <label style={{ 
+                                fontSize: '0.85rem', 
+                                color: 'var(--text-light)',
+                                fontFamily: 'var(--font-inter)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={statePublic}
+                                  onChange={(e) => setStatePublic(e.target.checked)}
+                                  style={{ 
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--accent-color)'
+                                  }}
+                                />
+                                <span>Public</span>
+                              </label>
+                            </div>
+                          </div>
+                          <p className={styles.fileHint}>
+                            Your state location (optional)
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </ScrollAnimation>
+                  </ScrollAnimation>
 
                 {/* Bio Section */}
                 <ScrollAnimation>

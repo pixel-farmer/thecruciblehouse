@@ -173,6 +173,10 @@ export default function ProfilePage() {
   const bio = user.user_metadata?.bio || '';
   const discipline = user.user_metadata?.discipline || '';
   const favoriteMediums = user.user_metadata?.favorite_mediums || [];
+  const city = user.user_metadata?.city || '';
+  const state = user.user_metadata?.state || '';
+  const cityPublic = user.user_metadata?.city_public !== false;
+  const statePublic = user.user_metadata?.state_public !== false;
 
   return (
     <motion.div
@@ -208,19 +212,18 @@ export default function ProfilePage() {
                         <h3 className={styles.userName}>{userName}</h3>
                       </Link>
                       <p className={styles.userHandle}>{userHandle}</p>
-                      <p className={styles.userMeta}>
-                        {discipline || `Joined ${joinDate}`}
-                      </p>
-                      {portfolioUrl && (
-                        <a 
-                          href={portfolioUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className={styles.portfolioLink}
-                        >
-                          {portfolioUrl.replace(/^https?:\/\//i, '')}
-                        </a>
+                      {discipline && (
+                        <p className={styles.userMeta}>{discipline}</p>
                       )}
+                      <p className={styles.userMeta}>
+                        {(() => {
+                          const locationParts: string[] = [];
+                          if (city && cityPublic) locationParts.push(city);
+                          if (state && statePublic) locationParts.push(state);
+                          const location = locationParts.length > 0 ? locationParts.join(', ') : null;
+                          return location ? `${location} • Joined ${joinDate}` : `Joined ${joinDate}`;
+                        })()}
+                      </p>
                     </div>
                     <Link 
                       href="/profile/edit"
@@ -235,11 +238,32 @@ export default function ProfilePage() {
             </ScrollAnimation>
 
             {/* Bio Section */}
-            {bio && (
+            {(bio || portfolioUrl) && (
               <ScrollAnimation>
                 <div className={styles.bioSection}>
                   <h4 className={styles.bioTitle}>Bio</h4>
-                  <p className={styles.bioText}>{bio}</p>
+                  {bio && (
+                    <p className={styles.bioText}>{bio}</p>
+                  )}
+                  {portfolioUrl && (
+                    <a 
+                      href={portfolioUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={styles.portfolioLink}
+                      style={{ 
+                        display: 'inline-block', 
+                        marginTop: bio ? '16px' : '0',
+                        color: 'var(--accent-color)',
+                        textDecoration: 'none',
+                        fontFamily: 'var(--font-inter)',
+                        fontSize: '0.95rem',
+                        fontWeight: 500
+                      }}
+                    >
+                      {portfolioUrl.replace(/^https?:\/\//i, '')}
+                    </a>
+                  )}
                 </div>
               </ScrollAnimation>
             )}
