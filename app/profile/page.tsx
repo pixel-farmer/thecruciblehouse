@@ -15,7 +15,9 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions'>('profile');
+  const [userCommissions, setUserCommissions] = useState<any[]>([]);
+  const [commissionsLoading, setCommissionsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -30,6 +32,7 @@ export default function ProfilePage() {
         setUser(session.user);
         setLoading(false);
         await fetchUserPosts(session.user.id);
+        await fetchUserCommissions(session.user.id);
       } catch (error) {
         console.error('Error checking auth:', error);
         router.push('/login');
@@ -78,6 +81,23 @@ export default function ProfilePage() {
     }
   };
 
+  const fetchUserCommissions = async (userId: string) => {
+    try {
+      setCommissionsLoading(true);
+      const response = await fetch('/api/commissions');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter commissions to only show current user's commissions
+        const myCommissions = (data.commissions || []).filter((commission: any) => commission.user_id === userId);
+        setUserCommissions(myCommissions);
+      }
+    } catch (error) {
+      console.error('Error fetching user commissions:', error);
+    } finally {
+      setCommissionsLoading(false);
+    }
+  };
+
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Are you sure you want to delete this post?')) {
       return;
@@ -100,6 +120,41 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error deleting post:', error);
       alert('Failed to delete post. Please try again.');
+    }
+  };
+
+  const handleDeleteCommission = async (commissionId: string) => {
+    if (!confirm('Are you sure you want to delete this commission?')) {
+      return;
+    }
+
+    try {
+      // Get the current session to include the access token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('You must be logged in to delete a commission.');
+        return;
+      }
+
+      const response = await fetch(`/api/commissions?id=${commissionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete commission');
+      } else {
+        // Remove the commission from the local state
+        setUserCommissions(userCommissions.filter((commission: any) => commission.id !== commissionId));
+      }
+    } catch (error: any) {
+      console.error('Error deleting commission:', error);
+      alert(error.message || 'Failed to delete commission. Please try again.');
     }
   };
 
@@ -261,6 +316,12 @@ export default function ProfilePage() {
                   >
                     Artwork
                   </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'commissions' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('commissions')}
+                  >
+                    Commissions
+                  </button>
                 </div>
 
                 {/* Profile Tab Content */}
@@ -405,6 +466,79 @@ export default function ProfilePage() {
                         UPLOAD
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Commissions Tab Content */}
+                {activeTab === 'commissions' && (
+                  <div className={styles.commissionsSection}>
+                    <h4 className={styles.commissionsTitle}>My Commissions ({userCommissions.length})</h4>
+                    
+                    {commissionsLoading ? (
+                      <div className={styles.loading}>Loading commissions...</div>
+                    ) : userCommissions.length > 0 ? (
+                      <div className={styles.commissionsList}>
+                        {userCommissions.map((commission: any) => (
+                          <div key={commission.id} className={styles.commissionItem}>
+                            <div className={styles.commissionItemHeader}>
+                              <h5 className={styles.commissionItemTitle}>{commission.title}</h5>
+                              <span className={styles.commissionItemDate}>{formatTimeAgo(commission.created_at)}</span>
+                            </div>
+                            <p className={styles.commissionItemDescription}>{commission.description}</p>
+                            <div className={styles.commissionItemMeta}>
+                              <span className={styles.commissionItemCategory}>{commission.category}</span>
+                              <span className={styles.commissionItemType}>{commission.type}</span>
+                              <span className={styles.commissionItemBudget}>
+                                ${commission.budget_min?.toLocaleString()} - ${commission.budget_max?.toLocaleString()}
+                              </span>
+                            </div>
+                            <div className={styles.commissionItemFooter}>
+                              <p className={styles.commissionItemDateFull}>{formatDate(commission.created_at)}</p>
+                              <button
+                                onClick={() => handleDeleteCommission(commission.id)}
+                                className={styles.deleteButton}
+                                title="Delete commission"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className={styles.emptyState}>
+                        <p>No commissions posted yet.</p>
+                        <Link
+                          href="/commissions/post-job"
+                          style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontFamily: 'var(--font-inter)',
+                            borderRadius: '20px',
+                            backgroundColor: '#ff6622',
+                            color: 'white',
+                            outline: 'none',
+                            border: 'none',
+                            textDecoration: 'none',
+                            transition: 'background-color 0.2s ease',
+                            padding: '8px 20px',
+                            cursor: 'pointer',
+                            marginTop: '16px',
+                            display: 'inline-block',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#e55a1a';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#ff6622';
+                          }}
+                        >
+                          POST A JOB
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

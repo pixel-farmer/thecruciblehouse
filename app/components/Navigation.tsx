@@ -12,12 +12,15 @@ export default function Navigation() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCommissionsDropdownOpen, setIsCommissionsDropdownOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
   const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const commissionsDropdownRef = useRef<HTMLDivElement>(null);
+  const commissionsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Check initial session
@@ -94,16 +97,26 @@ export default function Navigation() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
+      if (commissionsDropdownRef.current && !commissionsDropdownRef.current.contains(event.target as Node)) {
+        if (commissionsDropdownTimeoutRef.current) {
+          clearTimeout(commissionsDropdownTimeoutRef.current);
+          commissionsDropdownTimeoutRef.current = null;
+        }
+        setIsCommissionsDropdownOpen(false);
+      }
     };
 
-    if (isDropdownOpen) {
+    if (isDropdownOpen || isCommissionsDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      if (commissionsDropdownTimeoutRef.current) {
+        clearTimeout(commissionsDropdownTimeoutRef.current);
+      }
     };
-  }, [isDropdownOpen]);
+  }, [isDropdownOpen, isCommissionsDropdownOpen]);
 
   const handleLogout = () => {
     // Set ref flag immediately (doesn't trigger re-render)
@@ -178,17 +191,76 @@ export default function Navigation() {
           </Link>
         </div>
         <ul className={`${styles.navMenu} ${isMenuOpen ? styles.active : ''}`}>
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <Link
-                href={link.href}
-                className={`${styles.navLink} ${pathname === link.href ? styles.active : ''}`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {navLinks.map((link) => {
+            if (link.href === '/commissions') {
+              return (
+                <li key={link.href} ref={commissionsDropdownRef} className={styles.dropdownContainer}>
+                  <div
+                    className={styles.dropdownTrigger}
+                    onMouseEnter={() => {
+                      if (commissionsDropdownTimeoutRef.current) {
+                        clearTimeout(commissionsDropdownTimeoutRef.current);
+                        commissionsDropdownTimeoutRef.current = null;
+                      }
+                      setIsCommissionsDropdownOpen(true);
+                    }}
+                    onMouseLeave={() => {
+                      commissionsDropdownTimeoutRef.current = setTimeout(() => {
+                        setIsCommissionsDropdownOpen(false);
+                      }, 200);
+                    }}
+                  >
+                    <Link
+                      href={link.href}
+                      className={`${styles.navLink} ${pathname === link.href ? styles.active : ''}`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {link.label}
+                    </Link>
+                    {isCommissionsDropdownOpen && (
+                      <div 
+                        className={styles.dropdownMenu}
+                        onMouseEnter={() => {
+                          if (commissionsDropdownTimeoutRef.current) {
+                            clearTimeout(commissionsDropdownTimeoutRef.current);
+                            commissionsDropdownTimeoutRef.current = null;
+                          }
+                          setIsCommissionsDropdownOpen(true);
+                        }}
+                        onMouseLeave={() => {
+                          commissionsDropdownTimeoutRef.current = setTimeout(() => {
+                            setIsCommissionsDropdownOpen(false);
+                          }, 200);
+                        }}
+                      >
+                        <Link
+                          href="/commissions/post-job"
+                          className={styles.dropdownLink}
+                          onClick={() => {
+                            setIsCommissionsDropdownOpen(false);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Post a Job
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            }
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  className={`${styles.navLink} ${pathname === link.href ? styles.active : ''}`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
           <li style={{ 
             display: 'flex', 
             alignItems: 'center', 

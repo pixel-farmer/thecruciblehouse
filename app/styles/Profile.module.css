@@ -940,3 +940,109 @@
   border-bottom: 2px solid var(--border-color);
 }
 
+.commissionsSection {
+  background-color: transparent;
+  padding: 40px;
+  border-radius: 0;
+  box-shadow: none;
+  margin: 0;
+}
+
+.commissionsTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0 0 20px 0;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.commissionsList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.commissionItem {
+  padding: 20px;
+  background-color: var(--secondary-color);
+  border-radius: 8px;
+  border-left: 4px solid var(--accent-color);
+  transition: all 0.3s ease;
+}
+
+.commissionItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.commissionItemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 12px;
+}
+
+.commissionItemTitle {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin: 0;
+}
+
+.commissionItemDate {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  white-space: nowrap;
+}
+
+.commissionItemDescription {
+  font-size: 0.95rem;
+  color: var(--text-light);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.commissionItemMeta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.commissionItemCategory,
+.commissionItemType,
+.commissionItemBudget {
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  background-color: var(--white);
+  border-radius: 4px;
+  color: var(--text-dark);
+}
+
+.commissionItemCategory {
+  background-color: var(--accent-color);
+  color: var(--white);
+}
+
+.commissionItemBudget {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.commissionItemFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--border-color);
+}
+
+.commissionItemDateFull {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  margin: 0;
+}
+
