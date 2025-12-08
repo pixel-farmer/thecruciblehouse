@@ -19,7 +19,7 @@ export default function Navigation() {
   const [userInitials, setUserInitials] = useState<string>('');
   const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const commissionsDropdownRef = useRef<HTMLDivElement>(null);
+  const commissionsDropdownRef = useRef<HTMLLIElement>(null);
   const commissionsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
