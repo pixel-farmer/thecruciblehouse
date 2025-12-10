@@ -13,6 +13,7 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
   const router = useRouter();
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -33,6 +34,27 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
 
     fetchArtist();
   }, [slug, router]);
+
+  // Handle ESC key to close lightbox
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedImage) {
+        setSelectedImage(null);
+      }
+    };
+
+    if (selectedImage) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedImage]);
 
   if (loading) {
     return (
@@ -89,7 +111,11 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
             <div className={styles.galleryGrid}>
               {artist.artwork.map((artwork: any, index: number) => (
                 <ScrollAnimation key={artwork.id} delay={index * 0.1}>
-                  <div className={styles.galleryItem} data-category="artwork">
+                  <div 
+                    className={styles.galleryItem} 
+                    data-category="artwork"
+                    onClick={() => artwork.image_url && setSelectedImage(artwork.image_url)}
+                  >
                     {artwork.image_url ? (
                       <Image
                         src={artwork.image_url}
@@ -118,6 +144,38 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
           )}
         </div>
       </section>
+
+      {/* Lightbox Modal */}
+      {selectedImage && (
+        <div 
+          className={styles.lightboxOverlay}
+          onClick={() => setSelectedImage(null)}
+        >
+          <button
+            className={styles.lightboxClose}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedImage(null);
+            }}
+            aria-label="Close lightbox"
+          >
+            ×
+          </button>
+          <div 
+            className={styles.lightboxContent}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={selectedImage}
+              alt="Artwork"
+              width={1920}
+              height={1080}
+              className={styles.lightboxImage}
+              unoptimized
+            />
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
