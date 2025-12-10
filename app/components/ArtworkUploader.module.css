@@ -1,0 +1,347 @@
+.uploadButtonTopRight {
+  position: absolute;
+  top: 40px;
+  right: 40px;
+}
+
+.dialog {
+  position: relative;
+  z-index: 50;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.container {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.panel {
+  width: 100%;
+  max-width: 600px;
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.title {
+  font-family: var(--font-playfair), serif;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  padding: 30px 30px 20px;
+  margin: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.content {
+  padding: 30px;
+}
+
+.dropZone {
+  border: 2px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 60px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: var(--secondary-color);
+}
+
+.dropZone:hover {
+  border-color: #ff6622;
+  background-color: rgba(255, 102, 34, 0.05);
+}
+
+.dropZoneDragging {
+  border-color: #ff6622;
+  background-color: rgba(255, 102, 34, 0.1);
+}
+
+.dropZoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.dropZoneIcon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-light);
+  transition: color 0.3s ease;
+}
+
+.dropZone:hover .dropZoneIcon {
+  color: #ff6622;
+}
+
+.dropZoneText {
+  font-family: var(--font-inter);
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.dropZoneSubtext {
+  font-family: var(--font-inter);
+  font-size: 0.875rem;
+  color: var(--text-light);
+  margin: 0;
+}
+
+.fileInput {
+  display: none;
+}
+
+.previews {
+  margin-top: 30px;
+}
+
+.previewsTitle {
+  font-family: var(--font-inter);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0 0 16px 0;
+}
+
+.thumbnails {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.thumbnail {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: var(--secondary-color);
+}
+
+.thumbnailImage {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+}
+
+.removeButton {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: rgba(220, 38, 38, 0.9);
+  color: white;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-weight: bold;
+}
+
+.removeButton:hover:not(:disabled) {
+  background-color: rgba(220, 38, 38, 1);
+  transform: scale(1.1);
+}
+
+.removeButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.thumbnailName {
+  font-family: var(--font-inter);
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin: 4px 0 0 0;
+  padding: 0 4px 4px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.progressContainer {
+  margin-top: 24px;
+  padding: 20px;
+  background-color: var(--secondary-color);
+  border-radius: 8px;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progressFill {
+  height: 100%;
+  background-color: #ff6622;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progressText {
+  font-family: var(--font-inter);
+  font-size: 0.875rem;
+  color: var(--text-dark);
+  text-align: center;
+  margin: 0;
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  padding: 20px 30px;
+  border-top: 1px solid var(--border-color);
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  padding: 10px 20px;
+  background-color: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background-color: var(--secondary-color);
+  border-color: var(--text-light);
+}
+
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.uploadButton {
+  padding: 10px 20px;
+  background-color: #ff6622;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.uploadButton:hover:not(:disabled) {
+  background-color: #e55a1a;
+  transform: translateY(-1px);
+}
+
+.uploadButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.toast {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #10b981;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Transition classes */
+.enter {
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+.enterFrom {
+  opacity: 0;
+}
+
+.enterTo {
+  opacity: 1;
+}
+
+.leave {
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1);
+}
+
+.leaveFrom {
+  opacity: 1;
+}
+
+.leaveTo {
+  opacity: 0;
+}
+
+.enterFromModal {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.enterToModal {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.leaveFromModal {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.leaveToModal {
+  opacity: 0;
+  transform: scale(0.95);
+}
+

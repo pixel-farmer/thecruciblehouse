@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "@stripe/stripe-js": "^8.5.3",
     "@supabase/supabase-js": "^2.86.0",
     "@vercel/blob": "^2.0.0",

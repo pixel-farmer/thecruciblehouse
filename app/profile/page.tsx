@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
+import ArtworkUploader from '../components/ArtworkUploader';
 import styles from '../styles/Profile.module.css';
 
 export default function ProfilePage() {
@@ -18,6 +19,9 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions'>('profile');
   const [userCommissions, setUserCommissions] = useState<any[]>([]);
   const [commissionsLoading, setCommissionsLoading] = useState(true);
+  const [userArtwork, setUserArtwork] = useState<any[]>([]);
+  const [artworkLoading, setArtworkLoading] = useState(true);
+  const [galleryImageId, setGalleryImageId] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -31,8 +35,11 @@ export default function ProfilePage() {
 
         setUser(session.user);
         setLoading(false);
+        const galleryImageId = session.user.user_metadata?.gallery_image_id || null;
+        setGalleryImageId(galleryImageId);
         await fetchUserPosts(session.user.id);
         await fetchUserCommissions(session.user.id);
+        await fetchUserArtwork(session.user.id);
       } catch (error) {
         console.error('Error checking auth:', error);
         router.push('/login');
@@ -95,6 +102,80 @@ export default function ProfilePage() {
       console.error('Error fetching user commissions:', error);
     } finally {
       setCommissionsLoading(false);
+    }
+  };
+
+  const fetchUserArtwork = async (userId: string) => {
+    try {
+      setArtworkLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`/api/artwork?user_id=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserArtwork(data.artwork || []);
+      }
+    } catch (error) {
+      console.error('Error fetching user artwork:', error);
+    } finally {
+      setArtworkLoading(false);
+    }
+  };
+
+  const handleGalleryImageChange = async (artworkId: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || !session.user) {
+        alert('You must be logged in to set a gallery image.');
+        return;
+      }
+
+      // Verify the artwork belongs to the user
+      const { data: artwork, error: artworkError } = await supabase
+        .from('artwork')
+        .select('id, user_id')
+        .eq('id', artworkId)
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (artworkError || !artwork) {
+        alert('Artwork not found or you do not have permission to set it as gallery image');
+        return;
+      }
+
+      // Update user metadata directly using client-side Supabase (more reliable)
+      const currentMetadata = session.user.user_metadata || {};
+      const updatedMetadata = {
+        ...currentMetadata,
+        gallery_image_id: artworkId,
+      };
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: updatedMetadata,
+      });
+
+      if (updateError) {
+        console.error('Error updating gallery image:', updateError);
+        alert(updateError.message || 'Failed to set gallery image');
+        return;
+      }
+
+      // Update local state
+      setGalleryImageId(artworkId);
+      
+      // Refresh user data to get updated metadata
+      const { data: { session: newSession } } = await supabase.auth.getSession();
+      if (newSession?.user) {
+        setUser(newSession.user);
+      }
+    } catch (error) {
+      console.error('Error setting gallery image:', error);
+      alert('An error occurred. Please try again.');
     }
   };
 
@@ -233,6 +314,19 @@ export default function ProfilePage() {
   const state = user.user_metadata?.state || '';
   const cityPublic = user.user_metadata?.city_public !== false;
   const statePublic = user.user_metadata?.state_public !== false;
+
+  // Create slug for artist page
+  const createSlug = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
+
+  const userHandleForSlug = user.user_metadata?.handle || null;
+  const artistSlug = userHandleForSlug 
+    ? userHandleForSlug.replace('@', '').toLowerCase()
+    : createSlug(displayName);
 
   return (
     <motion.div
@@ -435,37 +529,60 @@ export default function ProfilePage() {
                 {/* Artwork Tab Content */}
                 {activeTab === 'artwork' && (
                   <div className={styles.artworkSection}>
-                    <h4 className={styles.artworkTitle}>Artwork</h4>
-                    <div className={styles.emptyState}>
-                      <p>No artwork uploaded yet.</p>
-                      <button
-                        style={{
-                          fontSize: '0.95rem',
-                          fontWeight: 600,
-                          textTransform: 'uppercase',
-                          letterSpacing: '1px',
-                          fontFamily: 'var(--font-inter)',
-                          borderRadius: '20px',
-                          backgroundColor: '#ff6622',
-                          color: 'white',
-                          outline: 'none',
-                          border: 'none',
-                          textDecoration: 'none',
-                          transition: 'background-color 0.2s ease',
-                          padding: '8px 20px',
-                          cursor: 'pointer',
-                          marginTop: '16px',
+                    <div className={styles.artworkHeader}>
+                      <h4 className={styles.artworkTitle}>Artwork ({userArtwork.length})</h4>
+                      <ArtworkUploader
+                        onUploadSuccess={() => {
+                          if (user?.id) {
+                            fetchUserArtwork(user.id);
+                          }
                         }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#e55a1a';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ff6622';
-                        }}
-                      >
-                        UPLOAD
-                      </button>
+                        artworkCount={userArtwork.length}
+                      />
                     </div>
+                    {artworkLoading ? (
+                      <div className={styles.loading}>Loading artwork...</div>
+                    ) : userArtwork.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        <p>No artwork uploaded yet.</p>
+                      </div>
+                    ) : (
+                      <div className={styles.artworkGrid}>
+                        {userArtwork.map((artwork: any) => (
+                          <div key={artwork.id} className={styles.artworkItemWrapper}>
+                            <div className={styles.galleryImageSelector}>
+                              <label className={styles.radioLabel}>
+                                <input
+                                  type="radio"
+                                  name="galleryImage"
+                                  checked={galleryImageId === artwork.id}
+                                  onChange={() => handleGalleryImageChange(artwork.id)}
+                                  className={styles.radioInput}
+                                />
+                                <span>Gallery Image</span>
+                              </label>
+                            </div>
+                            <Link
+                              href={`/artist/${artistSlug}`}
+                              className={styles.artworkItemLink}
+                            >
+                              <div className={styles.artworkItem}>
+                                <Image
+                                  src={artwork.image_url}
+                                  alt={artwork.title || 'Artwork'}
+                                  width={300}
+                                  height={300}
+                                  className={styles.artworkImage}
+                                />
+                                {artwork.title && (
+                                  <p className={styles.artworkItemTitle}>{artwork.title}</p>
+                                )}
+                              </div>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

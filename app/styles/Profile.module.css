@@ -928,6 +928,16 @@
   border-radius: 0;
   box-shadow: none;
   margin: 0;
+  position: relative;
+}
+
+.artworkHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .artworkTitle {
@@ -935,9 +945,83 @@
   font-size: 1.8rem;
   font-weight: 600;
   color: var(--primary-color);
-  margin: 0 0 20px 0;
-  padding-bottom: 15px;
-  border-bottom: 2px solid var(--border-color);
+  margin: 0;
+}
+
+.artworkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+  margin-top: 20px;
+}
+
+.artworkItemWrapper {
+  position: relative;
+}
+
+.galleryImageSelector {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 6px 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-inter);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  cursor: pointer;
+  margin: 0;
+}
+
+.radioInput {
+  cursor: pointer;
+  accent-color: #ff6622;
+}
+
+.artworkItemLink {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+.artworkItem {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  background-color: var(--white);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.artworkItem:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.artworkImage {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  display: block;
+}
+
+.artworkItemTitle {
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  padding: 12px;
+  margin: 0;
+  text-align: center;
 }
 
 .commissionsSection {
