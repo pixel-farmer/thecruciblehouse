@@ -35,7 +35,7 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 The community page uses Google Maps. Add your API key to `.env.local`:
 
 ```env
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=REDACTED_GOOGLE_MAPS_KEY
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 ```
 
 **Important for Production:**

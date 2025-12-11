@@ -104,7 +104,11 @@ export default function CommunityPage() {
         return;
       }
 
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'REDACTED_GOOGLE_MAPS_KEY';
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set. Please add it to your environment variables.');
+        return;
+      }
       
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
