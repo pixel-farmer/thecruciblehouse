@@ -15,6 +15,10 @@ export default function ResetPasswordPage() {
   const [isValidSession, setIsValidSession] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let subscription: { unsubscribe: () => void } | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+    let retryTimeoutId: NodeJS.Timeout | null = null;
+
     // Check if we have a valid session (from the reset link)
     const checkSession = async () => {
       try {
@@ -26,16 +30,36 @@ export default function ResetPasswordPage() {
         // If we have hash params with recovery token, let Supabase process them
         if (accessToken && type === 'recovery') {
           // Supabase client will automatically process the hash when detectSessionInUrl is true
-          // Wait a moment for it to process, then check session
-          setTimeout(async () => {
+          // But we need to wait for it to process, then check session
+          // Also listen for auth state changes
+          const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY' || (session && type === 'recovery')) {
+              setIsValidSession(true);
+              if (authSubscription) authSubscription.unsubscribe();
+            }
+          });
+          subscription = authSubscription;
+
+          // Also check after a delay in case the event already fired
+          timeoutId = setTimeout(async () => {
             const { data: { session } } = await supabase.auth.getSession();
             if (session) {
               setIsValidSession(true);
+              if (subscription) subscription.unsubscribe();
             } else {
-              setIsValidSession(false);
-              setMessage('Invalid or expired reset link. Please request a new password reset.');
+              // Give it more time - sometimes Supabase needs a moment
+              retryTimeoutId = setTimeout(async () => {
+                const { data: { session: retrySession } } = await supabase.auth.getSession();
+                if (retrySession) {
+                  setIsValidSession(true);
+                } else {
+                  setIsValidSession(false);
+                  setMessage('Invalid or expired reset link. Please request a new password reset.');
+                }
+                if (subscription) subscription.unsubscribe();
+              }, 1500);
             }
-          }, 1000);
+          }, 500);
           return;
         }
 
@@ -55,6 +79,13 @@ export default function ResetPasswordPage() {
     };
 
     checkSession();
+
+    // Cleanup function
+    return () => {
+      if (subscription) subscription.unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
+      if (retryTimeoutId) clearTimeout(retryTimeoutId);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

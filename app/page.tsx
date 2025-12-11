@@ -1,11 +1,31 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import styles from './styles/Home.module.css';
 import ScrollAnimation from './components/ScrollAnimation';
 
 export default function Home() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if we have a password reset token in the URL hash
+    // Supabase redirects to the Site URL (home page) with hash fragments
+    if (typeof window !== 'undefined') {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
+
+      // If we have a recovery token, redirect to reset-password page
+      if (accessToken && type === 'recovery') {
+        // Preserve the hash when redirecting
+        router.push(`/reset-password${window.location.hash}`);
+      }
+    }
+  }, [router]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
