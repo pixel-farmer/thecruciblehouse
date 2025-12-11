@@ -22,6 +22,9 @@ export default function CommunityPage() {
   const [isPosting, setIsPosting] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [fullscreenMapInstance, setFullscreenMapInstance] = useState<any>(null);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -94,6 +97,35 @@ export default function CommunityPage() {
 
     checkMembership();
 
+    // Load Google Maps API
+    const loadGoogleMaps = () => {
+      if ((window as any).google && (window as any).google.maps) {
+        setMapLoaded(true);
+        return;
+      }
+
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'REDACTED_GOOGLE_MAPS_KEY';
+      
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+      script.async = true;
+      script.defer = true;
+      
+      (window as any).initMap = () => {
+        setMapLoaded(true);
+      };
+
+      document.head.appendChild(script);
+
+      return () => {
+        if ((window as any).initMap) {
+          delete (window as any).initMap;
+        }
+      };
+    };
+
+    loadGoogleMaps();
+
     // Listen for auth changes
     const {
       data: { subscription },
@@ -148,8 +180,140 @@ export default function CommunityPage() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      if ((window as any).initMap) {
+        delete (window as any).initMap;
+      }
+    };
   }, []);
+
+  // Initialize map when script is loaded
+  useEffect(() => {
+    if (!mapLoaded || !(window as any).google?.maps) return;
+
+    // Initialize main map
+    const mapElement = document.getElementById('community-map');
+    if (mapElement && !mapInstance && (window as any).google?.maps) {
+      const map = new (window as any).google.maps.Map(mapElement, {
+        center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
+        zoom: 8,
+      });
+      setMapInstance(map);
+
+      // Fetch and add artist markers
+      fetch('/api/artists/locations')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.artists && data.artists.length > 0) {
+            const geocoder = new (window as any).google.maps.Geocoder();
+            const markers: any[] = [];
+
+            data.artists.forEach((artist: any) => {
+              geocoder.geocode({ address: artist.location }, (results: any, status: string) => {
+                if (status === 'OK' && results[0]) {
+                  const marker = new (window as any).google.maps.Marker({
+                    map: map,
+                    position: results[0].geometry.location,
+                    title: artist.name,
+                  });
+
+                  const infoWindow = new (window as any).google.maps.InfoWindow({
+                    content: `
+                      <div style="padding: 8px; min-width: 150px;">
+                        <div style="font-weight: 600; margin-bottom: 4px; font-family: var(--font-inter);">${artist.name}</div>
+                        <div style="font-size: 0.9em; color: #666; font-family: var(--font-inter);">${artist.location}</div>
+                      </div>
+                    `,
+                  });
+
+                  marker.addListener('click', () => {
+                    // Close all other info windows
+                    markers.forEach((m: any) => {
+                      if (m.infoWindow) {
+                        m.infoWindow.close();
+                      }
+                    });
+                    infoWindow.open(map, marker);
+                  });
+
+                  markers.push({ marker, infoWindow });
+                }
+              });
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching artist locations:', error);
+        });
+    }
+  }, [mapLoaded, mapInstance]);
+
+  // Initialize fullscreen map when opened
+  useEffect(() => {
+    if (!isMapFullscreen || !mapLoaded || !(window as any).google?.maps) {
+      // Reset fullscreen map instance when closing
+      if (!isMapFullscreen && fullscreenMapInstance) {
+        setFullscreenMapInstance(null);
+      }
+      return;
+    }
+
+    const fullscreenMapElement = document.getElementById('fullscreen-map');
+    if (fullscreenMapElement && !fullscreenMapInstance && (window as any).google?.maps) {
+      const map = new (window as any).google.maps.Map(fullscreenMapElement, {
+        center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
+        zoom: 8,
+      });
+      setFullscreenMapInstance(map);
+
+      // Fetch and add artist markers to fullscreen map
+      fetch('/api/artists/locations')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.artists && data.artists.length > 0) {
+            const geocoder = new (window as any).google.maps.Geocoder();
+            const markers: any[] = [];
+
+            data.artists.forEach((artist: any) => {
+              geocoder.geocode({ address: artist.location }, (results: any, status: string) => {
+                if (status === 'OK' && results[0]) {
+                  const marker = new (window as any).google.maps.Marker({
+                    map: map,
+                    position: results[0].geometry.location,
+                    title: artist.name,
+                  });
+
+                  const infoWindow = new (window as any).google.maps.InfoWindow({
+                    content: `
+                      <div style="padding: 8px; min-width: 150px;">
+                        <div style="font-weight: 600; margin-bottom: 4px; font-family: var(--font-inter);">${artist.name}</div>
+                        <div style="font-size: 0.9em; color: #666; font-family: var(--font-inter);">${artist.location}</div>
+                      </div>
+                    `,
+                  });
+
+                  marker.addListener('click', () => {
+                    // Close all other info windows
+                    markers.forEach((m: any) => {
+                      if (m.infoWindow) {
+                        m.infoWindow.close();
+                      }
+                    });
+                    infoWindow.open(map, marker);
+                  });
+
+                  markers.push({ marker, infoWindow });
+                }
+              });
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('Error fetching artist locations:', error);
+        });
+    }
+  }, [isMapFullscreen, mapLoaded, fullscreenMapInstance]);
 
   // Fetch posts on load
   useEffect(() => {
@@ -478,14 +642,12 @@ export default function CommunityPage() {
                         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
                         position: 'relative'
                       }}>
-                        <iframe
-                          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1841336039!2d-74.00594138459418!3d40.71277597932672!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a2976a1d5a9%3A0xc90f8fdffbcf390!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          allowFullScreen
-                          loading="lazy"
-                          referrerPolicy="no-referrer-when-downgrade"
+                        <div
+                          id="community-map"
+                          style={{
+                            width: '100%',
+                            height: '100%'
+                          }}
                         />
                         <button
                           onClick={() => setIsMapFullscreen(true)}
@@ -695,14 +857,14 @@ export default function CommunityPage() {
             >
               <span style={{ lineHeight: 1 }}>[X]</span>
             </button>
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3024.1841336039!2d-74.00594138459418!3d40.71277597932672!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x89c25a2976a1d5a9%3A0xc90f8fdffbcf390!2sNew%20York%2C%20NY%2C%20USA!5e0!3m2!1sen!2sus!4v1234567890123!5m2!1sen!2sus"
-              width="100%"
-              height="100%"
-              style={{ border: 0, borderRadius: '8px' }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+            <div
+              id="fullscreen-map"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: '8px',
+                overflow: 'hidden'
+              }}
             />
           </div>
         </div>

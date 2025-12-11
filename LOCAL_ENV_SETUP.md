@@ -8,6 +8,7 @@ For the posts feature to work on localhost, you need these 3 environment variabl
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 ```
 
 ## How to Get Your Service Role Key
@@ -29,7 +30,21 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    - Stop the server (Ctrl+C)
    - Run `npm run dev` again
 
+## Google Maps API Key
+
+The community page uses Google Maps. Add your API key to `.env.local`:
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=REDACTED_GOOGLE_MAPS_KEY
+```
+
+**Important for Production:**
+- Add this environment variable to your Vercel project settings (or other hosting platform)
+- Make sure your Google Cloud Console API key restrictions include:
+  - `http://localhost:3000/*` (for development)
+  - `https://www.thecruciblehouse.com/*` (for production)
+
 ## Verify It's Working
 
-After restarting, the posts should fetch correctly. The error should disappear!
+After restarting, the posts should fetch correctly and the map should display. The error should disappear!
 
