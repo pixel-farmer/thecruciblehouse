@@ -16,12 +16,14 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups'>('profile');
   const [userCommissions, setUserCommissions] = useState<any[]>([]);
   const [commissionsLoading, setCommissionsLoading] = useState(true);
   const [userArtwork, setUserArtwork] = useState<any[]>([]);
   const [artworkLoading, setArtworkLoading] = useState(true);
   const [galleryImageId, setGalleryImageId] = useState<string | null>(null);
+  const [userMeetups, setUserMeetups] = useState<any[]>([]);
+  const [meetupsLoading, setMeetupsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -40,6 +42,7 @@ export default function ProfilePage() {
         await fetchUserPosts(session.user.id);
         await fetchUserCommissions(session.user.id);
         await fetchUserArtwork(session.user.id);
+        await fetchUserMeetups(session.user.id);
       } catch (error) {
         console.error('Error checking auth:', error);
         router.push('/login');
@@ -124,6 +127,23 @@ export default function ProfilePage() {
       console.error('Error fetching user artwork:', error);
     } finally {
       setArtworkLoading(false);
+    }
+  };
+
+  const fetchUserMeetups = async (userId: string) => {
+    try {
+      setMeetupsLoading(true);
+      const response = await fetch('/api/meetups');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter meetups to only show current user's meetups (host)
+        const myMeetups = (data.meetups || []).filter((meetup: any) => meetup.host_id === userId);
+        setUserMeetups(myMeetups);
+      }
+    } catch (error) {
+      console.error('Error fetching user meetups:', error);
+    } finally {
+      setMeetupsLoading(false);
     }
   };
 
@@ -236,6 +256,31 @@ export default function ProfilePage() {
     } catch (error: any) {
       console.error('Error deleting commission:', error);
       alert(error.message || 'Failed to delete commission. Please try again.');
+    }
+  };
+
+  const handleDeleteMeetup = async (meetupId: string) => {
+    if (!confirm('Are you sure you want to delete this meetup?')) {
+      return;
+    }
+
+    try {
+      // Use Supabase client directly for deletion (RLS will handle permissions)
+      const { error } = await supabase
+        .from('meetups')
+        .delete()
+        .eq('id', meetupId);
+
+      if (error) {
+        console.error('Error deleting meetup:', error);
+        alert(error.message || 'Failed to delete meetup');
+      } else {
+        // Remove the meetup from the local state
+        setUserMeetups(userMeetups.filter((meetup: any) => meetup.id !== meetupId));
+      }
+    } catch (error) {
+      console.error('Error deleting meetup:', error);
+      alert('Failed to delete meetup. Please try again.');
     }
   };
 
@@ -399,22 +444,28 @@ export default function ProfilePage() {
                     Profile
                   </button>
                   <button
-                    className={`${styles.tabButton} ${activeTab === 'posts' ? styles.tabButtonActive : ''}`}
-                    onClick={() => setActiveTab('posts')}
-                  >
-                    Posts
-                  </button>
-                  <button
                     className={`${styles.tabButton} ${activeTab === 'artwork' ? styles.tabButtonActive : ''}`}
                     onClick={() => setActiveTab('artwork')}
                   >
                     Artwork
                   </button>
                   <button
+                    className={`${styles.tabButton} ${activeTab === 'posts' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('posts')}
+                  >
+                    Posts
+                  </button>
+                  <button
                     className={`${styles.tabButton} ${activeTab === 'commissions' ? styles.tabButtonActive : ''}`}
                     onClick={() => setActiveTab('commissions')}
                   >
                     Commissions
+                  </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'meetups' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('meetups')}
+                  >
+                    Meetups
                   </button>
                 </div>
 
@@ -588,41 +639,12 @@ export default function ProfilePage() {
 
                 {/* Commissions Tab Content */}
                 {activeTab === 'commissions' && (
-                  <div className={styles.commissionsSection}>
-                    <h4 className={styles.commissionsTitle}>My Commissions ({userCommissions.length})</h4>
+                  <div className={styles.postsSection}>
+                    <h4 className={styles.postsTitle}>My Commissions ({userCommissions.length})</h4>
                     
                     {commissionsLoading ? (
                       <div className={styles.loading}>Loading commissions...</div>
-                    ) : userCommissions.length > 0 ? (
-                      <div className={styles.commissionsList}>
-                        {userCommissions.map((commission: any) => (
-                          <div key={commission.id} className={styles.commissionItem}>
-                            <div className={styles.commissionItemHeader}>
-                              <h5 className={styles.commissionItemTitle}>{commission.title}</h5>
-                              <span className={styles.commissionItemDate}>{formatTimeAgo(commission.created_at)}</span>
-                            </div>
-                            <p className={styles.commissionItemDescription}>{commission.description}</p>
-                            <div className={styles.commissionItemMeta}>
-                              <span className={styles.commissionItemCategory}>{commission.category}</span>
-                              <span className={styles.commissionItemType}>{commission.type}</span>
-                              <span className={styles.commissionItemBudget}>
-                                ${commission.budget_min?.toLocaleString()} - ${commission.budget_max?.toLocaleString()}
-                              </span>
-                            </div>
-                            <div className={styles.commissionItemFooter}>
-                              <p className={styles.commissionItemDateFull}>{formatDate(commission.created_at)}</p>
-                              <button
-                                onClick={() => handleDeleteCommission(commission.id)}
-                                className={styles.deleteButton}
-                                title="Delete commission"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
+                    ) : userCommissions.length === 0 ? (
                       <div className={styles.emptyState}>
                         <p>No commissions posted yet.</p>
                         <Link
@@ -654,6 +676,143 @@ export default function ProfilePage() {
                         >
                           POST A JOB
                         </Link>
+                      </div>
+                    ) : (
+                      <div className={styles.postsList}>
+                        {userCommissions.map((commission: any) => (
+                          <div key={commission.id} className={styles.post}>
+                            <Link href="/profile" style={{ textDecoration: 'none' }}>
+                              {userAvatar && userAvatar.startsWith('http') ? (
+                                <div className={styles.postAvatarImage}>
+                                  <Image
+                                    src={userAvatar}
+                                    alt="Profile"
+                                    width={48}
+                                    height={48}
+                                    className={styles.postAvatarImg}
+                                  />
+                                </div>
+                              ) : (
+                                <div className={styles.postAvatar}>{userInitials}</div>
+                              )}
+                            </Link>
+                            <div className={styles.postContent}>
+                              <div className={styles.postHeader}>
+                                <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                  <span className={styles.postName}>{commission.title}</span>
+                                </Link>
+                                <span className={styles.postHandle}>{commission.category || ''}</span>
+                                <span className={styles.postTime}>{formatTimeAgo(commission.created_at)}</span>
+                              </div>
+                              <p className={styles.postText}>{commission.description}</p>
+                              {(commission.category || commission.type || commission.budget_min) && (
+                                <div style={{ 
+                                  marginTop: '8px', 
+                                  marginBottom: '8px',
+                                  fontSize: '0.9rem',
+                                  color: 'var(--text-light)',
+                                  fontFamily: 'var(--font-inter)',
+                                }}>
+                                  {commission.category && (
+                                    <div style={{ marginBottom: '4px' }}>
+                                      <strong>Category:</strong> {commission.category}
+                                    </div>
+                                  )}
+                                  {commission.type && (
+                                    <div style={{ marginBottom: '4px' }}>
+                                      <strong>Type:</strong> {commission.type}
+                                    </div>
+                                  )}
+                                  {commission.budget_min && commission.budget_max && (
+                                    <div>
+                                      <strong>Budget:</strong> ${commission.budget_min?.toLocaleString()} - ${commission.budget_max?.toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              <div className={styles.postFooter}>
+                                <p className={styles.postDate}>{formatDate(commission.created_at)}</p>
+                                <button
+                                  onClick={() => handleDeleteCommission(commission.id)}
+                                  className={styles.deleteButton}
+                                  title="Delete commission"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Meetups Tab Content */}
+                {activeTab === 'meetups' && (
+                  <div className={styles.postsSection}>
+                    <h4 className={styles.postsTitle}>My Meetups ({userMeetups.length})</h4>
+                    
+                    {meetupsLoading ? (
+                      <div className={styles.loading}>Loading meetups...</div>
+                    ) : userMeetups.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        <p>You haven't hosted any meetups yet.</p>
+                        <a href="/community" className={styles.linkToCommunity}>
+                          Go to Community →
+                        </a>
+                      </div>
+                    ) : (
+                      <div className={styles.postsList}>
+                        {userMeetups.map((meetup: any) => {
+                          const eventDate = new Date(meetup.event_time);
+                          const formattedDate = eventDate.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          });
+                          const formattedTime = eventDate.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true,
+                          });
+                          
+                          return (
+                            <div key={meetup.id} className={styles.post}>
+                              <div className={styles.postContent} style={{ width: '100%' }}>
+                                <div className={styles.postHeader}>
+                                  <span className={styles.postName}>{meetup.title}</span>
+                                  <span className={styles.postTime}>{formatTimeAgo(meetup.created_at)}</span>
+                                </div>
+                                <p className={styles.postText}>{meetup.description}</p>
+                                <div style={{ 
+                                  marginTop: '8px', 
+                                  marginBottom: '8px',
+                                  fontSize: '0.9rem',
+                                  color: 'var(--text-light)',
+                                  fontFamily: 'var(--font-inter)',
+                                }}>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <strong>Date & Time:</strong> {formattedDate} at {formattedTime}
+                                  </div>
+                                  <div>
+                                    <strong>Location:</strong> {meetup.location}
+                                  </div>
+                                </div>
+                                <div className={styles.postFooter}>
+                                  <p className={styles.postDate}>{formatDate(meetup.created_at)}</p>
+                                  <button
+                                    onClick={() => handleDeleteMeetup(meetup.id)}
+                                    className={styles.deleteButton}
+                                    title="Delete meetup"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

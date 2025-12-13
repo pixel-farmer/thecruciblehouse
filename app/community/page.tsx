@@ -6,6 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
+import UpgradeModal from '../components/UpgradeModal';
+import HostMeetupModal from '../components/HostMeetupModal';
 import styles from '../styles/Community.module.css';
 
 export default function CommunityPage() {
@@ -25,6 +27,13 @@ export default function CommunityPage() {
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
   const [fullscreenMapInstance, setFullscreenMapInstance] = useState<any>(null);
+  const [recentMembers, setRecentMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showHostMeetupModal, setShowHostMeetupModal] = useState(false);
+  const [meetups, setMeetups] = useState<any[]>([]);
+  const [meetupsLoading, setMeetupsLoading] = useState(true);
+  const [selectedMeetup, setSelectedMeetup] = useState<any | null>(null);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -71,13 +80,8 @@ export default function CommunityPage() {
           }
           
           // Check if user has paid membership
-          // For now, we'll check user metadata or you can implement a separate check
-          // This is a placeholder - you'll need to implement actual membership checking
           const userMetadata = session.user.user_metadata;
           const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-          
-          // If you have a membership field in user metadata, check it
-          // Otherwise, you can query a separate memberships table
           setHasPaidMembership(!!membershipStatus);
         } else {
           setHasPaidMembership(false);
@@ -107,6 +111,21 @@ export default function CommunityPage() {
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
       if (!apiKey) {
         console.error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set. Please add it to your environment variables.');
+        return;
+      }
+
+      // Check if Google Maps script already exists to prevent duplicates
+      const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
+      if (existingScripts.length > 0) {
+        // Script already exists, just wait for it to load
+        if ((window as any).google && (window as any).google.maps) {
+          setMapLoaded(true);
+        } else {
+          // Wait for callback
+          (window as any).initMap = () => {
+            setMapLoaded(true);
+          };
+        }
         return;
       }
       
@@ -199,11 +218,108 @@ export default function CommunityPage() {
     // Initialize main map
     const mapElement = document.getElementById('community-map');
     if (mapElement && !mapInstance && (window as any).google?.maps) {
-      const map = new (window as any).google.maps.Map(mapElement, {
+      const mapOptions: any = {
         center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
         zoom: 8,
-      });
+        // Disable interaction if user doesn't have membership
+        gestureHandling: hasPaidMembership ? 'auto' : 'none',
+        zoomControl: hasPaidMembership,
+        scrollwheel: hasPaidMembership,
+        disableDoubleClickZoom: !hasPaidMembership,
+        draggable: hasPaidMembership,
+      };
+
+      // Add custom map style if Map ID is configured
+      const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+      if (mapId) {
+        mapOptions.mapId = mapId;
+      }
+
+      const map = new (window as any).google.maps.Map(mapElement, mapOptions);
       setMapInstance(map);
+
+      // Add overlay and prevent interaction if no membership
+      if (!hasPaidMembership) {
+        // Show message when user tries to interact
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        `;
+        overlay.innerHTML = `
+          <div style="
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            font-family: var(--font-inter);
+            max-width: 300px;
+          ">
+            <p style="margin: 0 0 1rem 0; color: var(--text-dark); font-weight: 600;">
+              Upgrade to Pro to zoom and scroll
+            </p>
+            <button id="upgrade-from-map" style="
+              background: #ff6622;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 20px;
+              font-weight: 600;
+              cursor: pointer;
+              font-family: var(--font-inter);
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            ">Upgrade</button>
+          </div>
+        `;
+        mapElement.style.position = 'relative';
+        mapElement.appendChild(overlay);
+
+        // Show overlay on interaction attempts
+        let overlayTimeout: NodeJS.Timeout;
+        const showOverlay = () => {
+          overlay.style.opacity = '1';
+          overlay.style.pointerEvents = 'auto';
+          clearTimeout(overlayTimeout);
+          overlayTimeout = setTimeout(() => {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+          }, 3000);
+        };
+
+        // Listen for interaction attempts
+        map.addListener('click', showOverlay);
+        map.addListener('dragstart', showOverlay);
+        
+        // Handle upgrade button click
+        const upgradeBtn = overlay.querySelector('#upgrade-from-map');
+        if (upgradeBtn) {
+          upgradeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // Check session directly instead of using closure values
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+              // Update userId state if needed, then open modal
+              setUserId(session.user.id);
+              setShowUpgradeModal(true);
+            } else {
+              alert('Please log in to upgrade your membership.');
+            }
+          });
+        }
+      }
 
       // Fetch and add artist markers
       fetch('/api/artists/locations')
@@ -251,7 +367,20 @@ export default function CommunityPage() {
           console.error('Error fetching artist locations:', error);
         });
     }
-  }, [mapLoaded, mapInstance]);
+  }, [mapLoaded, mapInstance, hasPaidMembership]);
+
+  // Update map controls when membership status changes
+  useEffect(() => {
+    if (mapInstance) {
+      mapInstance.setOptions({
+        gestureHandling: hasPaidMembership ? 'auto' : 'none',
+        zoomControl: hasPaidMembership,
+        scrollwheel: hasPaidMembership,
+        disableDoubleClickZoom: !hasPaidMembership,
+        draggable: hasPaidMembership,
+      });
+    }
+  }, [mapInstance, hasPaidMembership]);
 
   // Initialize fullscreen map when opened
   useEffect(() => {
@@ -265,11 +394,105 @@ export default function CommunityPage() {
 
     const fullscreenMapElement = document.getElementById('fullscreen-map');
     if (fullscreenMapElement && !fullscreenMapInstance && (window as any).google?.maps) {
-      const map = new (window as any).google.maps.Map(fullscreenMapElement, {
+      const mapOptions: any = {
         center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
         zoom: 8,
-      });
+        // Disable interaction if user doesn't have membership
+        gestureHandling: hasPaidMembership ? 'auto' : 'none',
+        zoomControl: hasPaidMembership,
+        scrollwheel: hasPaidMembership,
+        disableDoubleClickZoom: !hasPaidMembership,
+        draggable: hasPaidMembership,
+      };
+
+      // Add custom map style if Map ID is configured
+      const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+      if (mapId) {
+        mapOptions.mapId = mapId;
+      }
+
+      const map = new (window as any).google.maps.Map(fullscreenMapElement, mapOptions);
       setFullscreenMapInstance(map);
+
+      // Add overlay for fullscreen map if no membership
+      if (!hasPaidMembership) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        `;
+        overlay.innerHTML = `
+          <div style="
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            font-family: var(--font-inter);
+            max-width: 300px;
+          ">
+            <p style="margin: 0 0 1rem 0; color: var(--text-dark); font-weight: 600;">
+              Upgrade to Pro to zoom and scroll
+            </p>
+            <button id="upgrade-from-fullscreen-map" style="
+              background: #ff6622;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 20px;
+              font-weight: 600;
+              cursor: pointer;
+              font-family: var(--font-inter);
+              text-transform: uppercase;
+              letter-spacing: 1px;
+            ">Upgrade</button>
+          </div>
+        `;
+        fullscreenMapElement.style.position = 'relative';
+        fullscreenMapElement.appendChild(overlay);
+
+        let overlayTimeout: NodeJS.Timeout;
+        const showOverlay = () => {
+          overlay.style.opacity = '1';
+          overlay.style.pointerEvents = 'auto';
+          clearTimeout(overlayTimeout);
+          overlayTimeout = setTimeout(() => {
+            overlay.style.opacity = '0';
+            overlay.style.pointerEvents = 'none';
+          }, 3000);
+        };
+
+        map.addListener('click', showOverlay);
+        map.addListener('dragstart', showOverlay);
+
+        const upgradeBtn = overlay.querySelector('#upgrade-from-fullscreen-map');
+        if (upgradeBtn) {
+          upgradeBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            // Check session directly instead of using closure values
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user) {
+              // Update userId state if needed, then open modal
+              setUserId(session.user.id);
+              setIsMapFullscreen(false);
+              setShowUpgradeModal(true);
+            } else {
+              alert('Please log in to upgrade your membership.');
+            }
+          });
+        }
+      }
 
       // Fetch and add artist markers to fullscreen map
       fetch('/api/artists/locations')
@@ -317,12 +540,68 @@ export default function CommunityPage() {
           console.error('Error fetching artist locations:', error);
         });
     }
-  }, [isMapFullscreen, mapLoaded, fullscreenMapInstance]);
+  }, [isMapFullscreen, mapLoaded, fullscreenMapInstance, hasPaidMembership, isLoggedIn, userId]);
+
+  // Update fullscreen map controls when membership status changes
+  useEffect(() => {
+    if (fullscreenMapInstance) {
+      fullscreenMapInstance.setOptions({
+        gestureHandling: hasPaidMembership ? 'auto' : 'none',
+        zoomControl: hasPaidMembership,
+        scrollwheel: hasPaidMembership,
+        disableDoubleClickZoom: !hasPaidMembership,
+        draggable: hasPaidMembership,
+      });
+    }
+  }, [fullscreenMapInstance, hasPaidMembership]);
 
   // Fetch posts on load
   useEffect(() => {
     fetchPosts();
+    fetchRecentMembers();
+    fetchMeetups();
   }, []);
+
+  const fetchMeetups = async () => {
+    try {
+      setMeetupsLoading(true);
+      const response = await fetch('/api/meetups');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setMeetups(data.meetups || []);
+      } else {
+        console.error('Failed to fetch meetups');
+        setMeetups([]);
+      }
+    } catch (error) {
+      console.error('Error fetching meetups:', error);
+      setMeetups([]);
+    } finally {
+      setMeetupsLoading(false);
+    }
+  };
+
+  const fetchRecentMembers = async () => {
+    try {
+      setMembersLoading(true);
+      const response = await fetch('/api/members/recent');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRecentMembers(data.members || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch recent members:', response.status, errorData);
+        setRecentMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching recent members:', error);
+      setRecentMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
@@ -420,6 +699,8 @@ export default function CommunityPage() {
         setPostText('');
         // Refresh posts to ensure we have the latest
         await fetchPosts();
+        // Refresh recent members since user activity changed
+        await fetchRecentMembers();
       } else {
         const error = await response.json();
         console.error('Failed to create post:', error);
@@ -445,6 +726,25 @@ export default function CommunityPage() {
     return date.toLocaleDateString();
   };
 
+  const handleUpgradeClick = () => {
+    if (!isLoggedIn || !userId) {
+      alert('Please log in to upgrade your membership.');
+      return;
+    }
+    setShowUpgradeModal(true);
+  };
+
+  const handleUpgradeSuccess = async () => {
+    // Refresh membership status from Supabase
+    try {
+      await supabase.auth.refreshSession();
+      // The auth state change listener will pick up the updated membership status
+      // and update hasPaidMembership state, which will enable map interactions
+    } catch (err) {
+      console.error('Error refreshing session:', err);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -463,29 +763,41 @@ export default function CommunityPage() {
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Recently Active Members</h3>
-                  <div className={styles.memberList}>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JD</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>John Doe</p>
-                        <p className={styles.memberActivity}>Active 2 hours ago</p>
-                      </div>
+                  {membersLoading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                      Loading...
                     </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JS</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Jane Smith</p>
-                        <p className={styles.memberActivity}>Active 5 hours ago</p>
-                      </div>
+                  ) : recentMembers.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem' }}>
+                      No active members yet.
                     </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>AB</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Alex Brown</p>
-                        <p className={styles.memberActivity}>Active 1 day ago</p>
-                      </div>
+                  ) : (
+                    <div className={styles.memberList}>
+                      {recentMembers.map((member) => (
+                        <Link key={member.id} href="/profile" style={{ textDecoration: 'none' }}>
+                          <div className={styles.memberItem}>
+                            {member.avatar && member.avatar.startsWith('http') ? (
+                              <div className={styles.memberAvatarImage}>
+                                <Image
+                                  src={member.avatar}
+                                  alt={member.name}
+                                  width={40}
+                                  height={40}
+                                  style={{ borderRadius: '50%', objectFit: 'cover' }}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.memberAvatar}>{member.initials}</div>
+                            )}
+                            <div className={styles.memberInfo}>
+                              <p className={styles.memberName}>{member.name}</p>
+                              <p className={styles.memberActivity}>{member.activity}</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </ScrollAnimation>
 
@@ -510,98 +822,233 @@ export default function CommunityPage() {
               </ScrollAnimation>
             </div>
 
-            {/* Column 2: Community Feed */}
+            {/* Column 2: Community Feed or Meetup Details */}
             <ScrollAnimation>
               <div className={styles.column}>
-                <div className={styles.postFeed}>
-                  {/* Post Composer */}
-                  <div className={styles.postComposer}>
-                    <Link href="/profile" style={{ textDecoration: 'none' }}>
-                      {userAvatar && userAvatar.startsWith('http') ? (
-                        <div className={styles.postAvatarImage}>
-                          <Image
-                            src={userAvatar}
-                            alt="Profile"
-                            width={48}
-                            height={48}
-                            className={styles.postAvatarImg}
-                          />
+                {selectedMeetup ? (
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    padding: '2rem',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                      <h2 style={{ 
+                        margin: 0, 
+                        fontFamily: 'var(--font-inter)', 
+                        fontSize: '1.75rem', 
+                        fontWeight: 600, 
+                        color: 'var(--text-dark)' 
+                      }}>
+                        {selectedMeetup.title}
+                      </h2>
+                      <button
+                        onClick={() => setSelectedMeetup(null)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '1.5rem',
+                          cursor: 'pointer',
+                          color: 'var(--text-light)',
+                          padding: '0',
+                          width: '30px',
+                          height: '30px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '50%',
+                          transition: 'background-color 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '1rem',
+                      paddingTop: '1.5rem',
+                      borderTop: '1px solid #eee',
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ 
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            color: 'var(--text-light)',
+                            minWidth: '80px',
+                          }}>Date & Time:</span>
+                          <span style={{ 
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '0.95rem',
+                            color: 'var(--text-dark)',
+                          }}>
+                            {(() => {
+                              const eventDate = new Date(selectedMeetup.event_time);
+                              const formattedDate = eventDate.toLocaleDateString('en-US', {
+                                month: 'long',
+                                day: 'numeric',
+                                year: 'numeric',
+                              });
+                              const formattedTime = eventDate.toLocaleTimeString('en-US', {
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                              });
+                              return `${formattedDate} at ${formattedTime}`;
+                            })()}
+                          </span>
                         </div>
-                      ) : (
-                        <div className={styles.postAvatar}>{userInitials}</div>
-                      )}
-                    </Link>
-                    <div className={styles.composerContent}>
-                      <textarea
-                        className={styles.composerTextarea}
-                        placeholder="What's happening?"
-                        rows={3}
-                        value={postText}
-                        onChange={(e) => setPostText(e.target.value)}
-                        maxLength={300}
-                      />
-                      <div className={styles.composerActions}>
-                        <div className={styles.composerIcons}>
-                          {/* Icons can be added here later (image, etc.) */}
+                        <div style={{ 
+                          marginLeft: '80px',
+                        }}>
+                          <p style={{ 
+                            margin: 0,
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '0.95rem',
+                            lineHeight: '1.6',
+                            color: 'var(--text-dark)',
+                            whiteSpace: 'pre-wrap',
+                          }}>
+                            {selectedMeetup.description}
+                          </p>
                         </div>
-                        <div className={styles.composerRight}>
-                          {postText.length > 0 && (
-                            <span className={styles.characterCount}>
-                              {300 - postText.length}
-                            </span>
-                          )}
-                          <button 
-                            className={styles.postButton}
-                            disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
-                            onClick={handlePostSubmit}
-                          >
-                            {isPosting ? 'Posting...' : 'Post'}
-                          </button>
-                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ 
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          color: 'var(--text-light)',
+                          minWidth: '80px',
+                        }}>Location:</span>
+                        <span style={{ 
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '0.95rem',
+                          color: 'var(--text-dark)',
+                        }}>
+                          {selectedMeetup.location}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span style={{ 
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '0.9rem',
+                          fontWeight: 600,
+                          color: 'var(--text-light)',
+                          minWidth: '80px',
+                        }}>Host:</span>
+                        <span style={{ 
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '0.95rem',
+                          color: 'var(--text-dark)',
+                        }}>
+                          {selectedMeetup.host_name || 'Community Member'}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  
-                  {postsLoading ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
-                      Loading posts...
-                    </div>
-                  ) : posts.length === 0 ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
-                      No posts yet. Be the first to post!
-                    </div>
-                  ) : (
-                    posts.map((post) => (
-                      <div key={post.id} className={styles.post}>
-                        <Link href="/profile" style={{ textDecoration: 'none' }}>
-                          {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                            <div className={styles.postAvatarImage}>
-                              <Image
-                                src={post.user_avatar}
-                                alt="Profile"
-                                width={48}
-                                height={48}
-                                className={styles.postAvatarImg}
-                              />
-                            </div>
-                          ) : (
-                            <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
-                          )}
-                        </Link>
-                        <div className={styles.postContent}>
-                          <div className={styles.postHeader}>
-                            <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                              <span className={styles.postName}>{post.user_name || 'User'}</span>
-                            </Link>
-                            <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
-                            <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                ) : (
+                  <div className={styles.postFeed}>
+                    {/* Post Composer */}
+                    <div className={styles.postComposer}>
+                      <Link href="/profile" style={{ textDecoration: 'none' }}>
+                        {userAvatar && userAvatar.startsWith('http') ? (
+                          <div className={styles.postAvatarImage}>
+                            <Image
+                              src={userAvatar}
+                              alt="Profile"
+                              width={48}
+                              height={48}
+                              className={styles.postAvatarImg}
+                            />
                           </div>
-                          <p className={styles.postText}>{post.content}</p>
+                        ) : (
+                          <div className={styles.postAvatar}>{userInitials}</div>
+                        )}
+                      </Link>
+                      <div className={styles.composerContent}>
+                        <textarea
+                          className={styles.composerTextarea}
+                          placeholder="What's happening?"
+                          rows={3}
+                          value={postText}
+                          onChange={(e) => setPostText(e.target.value)}
+                          maxLength={300}
+                        />
+                        <div className={styles.composerActions}>
+                          <div className={styles.composerIcons}>
+                            {/* Icons can be added here later (image, etc.) */}
+                          </div>
+                          <div className={styles.composerRight}>
+                            {postText.length > 0 && (
+                              <span className={styles.characterCount}>
+                                {300 - postText.length}
+                              </span>
+                            )}
+                            <button 
+                              className={styles.postButton}
+                              disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
+                              onClick={handlePostSubmit}
+                            >
+                              {isPosting ? 'Posting...' : 'Post'}
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    </div>
+                    
+                    {postsLoading ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                        Loading posts...
+                      </div>
+                    ) : posts.length === 0 ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                        No posts yet. Be the first to post!
+                      </div>
+                    ) : (
+                      posts.map((post) => (
+                        <div key={post.id} className={styles.post}>
+                          <Link href="/profile" style={{ textDecoration: 'none' }}>
+                            {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                              <div className={styles.postAvatarImage}>
+                                <Image
+                                  src={post.user_avatar}
+                                  alt="Profile"
+                                  width={48}
+                                  height={48}
+                                  className={styles.postAvatarImg}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                            )}
+                          </Link>
+                          <div className={styles.postContent}>
+                            <div className={styles.postHeader}>
+                              <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
+                                <span className={styles.postName}>{post.user_name || 'User'}</span>
+                              </Link>
+                              <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                              <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                            </div>
+                            <p className={styles.postText}>{post.content}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             </ScrollAnimation>
 
@@ -611,144 +1058,177 @@ export default function CommunityPage() {
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Artists Near Me</h3>
                   
-                  {hasPaidMembership ? (
-                    <div className={styles.nearbyList}>
-                      <div className={styles.nearbyItem}>
-                        <div className={styles.nearbyAvatar}>MC</div>
-                        <div className={styles.nearbyInfo}>
-                          <p className={styles.nearbyName}>Mike Chen</p>
-                          <p className={styles.nearbyDistance}>2.3 miles away</p>
-                        </div>
-                      </div>
-                      <div className={styles.nearbyItem}>
-                        <div className={styles.nearbyAvatar}>SL</div>
-                        <div className={styles.nearbyInfo}>
-                          <p className={styles.nearbyName}>Sarah Lee</p>
-                          <p className={styles.nearbyDistance}>4.7 miles away</p>
-                        </div>
-                      </div>
-                      <div className={styles.nearbyItem}>
-                        <div className={styles.nearbyAvatar}>RW</div>
-                        <div className={styles.nearbyInfo}>
-                          <p className={styles.nearbyName}>Robert White</p>
-                          <p className={styles.nearbyDistance}>6.1 miles away</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
-                      <div style={{ 
-                        width: '100%', 
-                        aspectRatio: '1 / 1',
-                        marginBottom: '1rem',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
-                        position: 'relative'
-                      }}>
-                        <div
-                          id="community-map"
-                          style={{
-                            width: '100%',
-                            height: '100%'
-                          }}
-                        />
-                        <button
-                          onClick={() => setIsMapFullscreen(true)}
-                          style={{
-                            position: 'absolute',
-                            top: '10px',
-                            right: '10px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                            border: '1px solid rgba(0, 0, 0, 0.1)',
-                            borderRadius: '6px',
-                            padding: '8px 12px',
-                            cursor: 'pointer',
-                            fontFamily: 'var(--font-inter)',
-                            fontSize: '1.2rem',
-                            color: 'var(--text-dark)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-                            transition: 'all 0.2s ease',
-                            zIndex: 10
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                          title="View fullscreen map"
-                        >
-                          <span style={{ lineHeight: 1 }}>[ ]</span>
-                        </button>
-                      </div>
-                      <p style={{ 
-                        color: 'var(--text-light)', 
-                        fontFamily: 'var(--font-inter)',
-                        marginBottom: '1rem',
-                        fontSize: '0.9rem'
-                      }}>
-                        Upgrade to a paid membership to see members near you and connect with local artists.
-                      </p>
-                      <button
-                        className="inline-block focus:outline-none"
+                  <div style={{ marginTop: '1rem', marginBottom: '2rem' }}>
+                    <div style={{ 
+                      width: '100%', 
+                      aspectRatio: '1 / 1',
+                      marginBottom: '1rem',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                      position: 'relative'
+                    }}>
+                      <div
+                        id="community-map"
                         style={{
-                          fontSize: '0.95rem',
-                          fontWeight: 600,
-                          textTransform: 'uppercase',
-                          letterSpacing: '1px',
-                          fontFamily: 'var(--font-inter)',
-                          borderRadius: '20px',
-                          backgroundColor: '#ff6622',
-                          color: 'white',
-                          outline: 'none',
-                          border: 'none',
-                          textDecoration: 'none',
-                          transition: 'background-color 0.2s ease',
-                          padding: '8px 20px',
+                          width: '100%',
+                          height: '100%'
+                        }}
+                      />
+                      <button
+                        onClick={() => setIsMapFullscreen(true)}
+                        style={{
+                          position: 'absolute',
+                          top: '10px',
+                          right: '10px',
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                          border: '1px solid rgba(0, 0, 0, 0.1)',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
                           cursor: 'pointer',
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '1.2rem',
+                          color: 'var(--text-dark)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+                          transition: 'all 0.2s ease',
+                          zIndex: 10
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#e55a1a';
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+                          e.currentTarget.style.transform = 'scale(1.05)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ff6622';
+                          e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)';
+                          e.currentTarget.style.transform = 'scale(1)';
                         }}
+                        title="View fullscreen map"
                       >
-                        UPGRADE
+                        <span style={{ lineHeight: 1 }}>[ ]</span>
                       </button>
                     </div>
-                  )}
+                    {!hasPaidMembership && isLoggedIn && (
+                      <>
+                        <p style={{ 
+                          color: 'var(--text-light)', 
+                          fontFamily: 'var(--font-inter)',
+                          marginBottom: '1rem',
+                          fontSize: '0.9rem'
+                        }}>
+                          Try scrolling or zooming the map to upgrade and unlock full features.
+                        </p>
+                        <button
+                          onClick={handleUpgradeClick}
+                          className="inline-block focus:outline-none"
+                          style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontFamily: 'var(--font-inter)',
+                            borderRadius: '20px',
+                            backgroundColor: '#ff6622',
+                            color: 'white',
+                            outline: 'none',
+                            border: 'none',
+                            textDecoration: 'none',
+                            transition: 'background-color 0.2s ease',
+                            padding: '8px 20px',
+                            cursor: 'pointer',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#e55a1a';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#ff6622';
+                          }}
+                        >
+                          UPGRADE
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </ScrollAnimation>
 
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Workshops & Meetups</h3>
-                  <div className={styles.eventList}>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Artist Coffee Hour</h5>
-                      <p className={styles.eventDate}>March 15, 2025</p>
-                      <p className={styles.eventLocation}>Local Café</p>
+                  {meetupsLoading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                      Loading...
                     </div>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Creative Critique Session</h5>
-                      <p className={styles.eventDate}>March 22, 2025</p>
-                      <p className={styles.eventLocation}>Community Studio</p>
+                  ) : meetups.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem' }}>
+                      No upcoming meetups. Be the first to host one!
                     </div>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Portfolio Review</h5>
-                      <p className={styles.eventDate}>March 28, 2025</p>
-                      <p className={styles.eventLocation}>Gallery Space</p>
+                  ) : (
+                    <div className={styles.eventList}>
+                      {meetups.map((meetup) => {
+                        const eventDate = new Date(meetup.event_time);
+                        const formattedDate = eventDate.toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        });
+                        const formattedTime = eventDate.toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                          hour12: true,
+                        });
+                        
+                        return (
+                          <div 
+                            key={meetup.id} 
+                            className={styles.eventItem}
+                            onClick={() => setSelectedMeetup(meetup)}
+                            style={{
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <h5 className={styles.eventName}>{meetup.title}</h5>
+                            <p className={styles.eventDate}>{formattedDate} at {formattedTime}</p>
+                            <p className={styles.eventLocation}>{meetup.location}</p>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
                   <button
                     className={styles.hostMeetupButton}
+                    onClick={async () => {
+                      if (!isLoggedIn) {
+                        alert('Please log in to host a meetup.');
+                        return;
+                      }
+                      
+                      // Check membership status directly from session
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (session?.user) {
+                        const userMetadata = session.user.user_metadata;
+                        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+                        const isPro = !!membershipStatus;
+                        
+                        if (!isPro) {
+                          // Show upgrade modal for non-pro users
+                          setShowUpgradeModal(true);
+                        } else {
+                          // Pro users can create meetups
+                          setShowHostMeetupModal(true);
+                        }
+                      } else {
+                        alert('Please log in to host a meetup.');
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '8px 20px',
@@ -873,6 +1353,24 @@ export default function CommunityPage() {
           </div>
         </div>
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        userId={userId || ''}
+        onSuccess={handleUpgradeSuccess}
+      />
+
+      {/* Host Meetup Modal */}
+      <HostMeetupModal
+        isOpen={showHostMeetupModal}
+        onClose={() => setShowHostMeetupModal(false)}
+        onSuccess={() => {
+          // Refresh meetups list when a new one is created
+          fetchMeetups();
+        }}
+      />
     </motion.div>
   );
 }

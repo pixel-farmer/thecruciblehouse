@@ -44,6 +44,24 @@ NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
   - `http://localhost:3000/*` (for development)
   - `https://www.thecruciblehouse.com/*` (for production)
 
+## Custom Map Style (Optional)
+
+If you've created a custom map style in Google Cloud Console, add the Map ID to `.env.local`:
+
+```env
+NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=your-map-id
+```
+
+**How to find your Map ID:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **Maps** → **Map Styles** (or **APIs & Services** → **Maps** → **Map Styles**)
+3. Click on your custom map style (e.g., "Arts Map")
+4. Copy the **Map ID** (it looks like: `1234567890abcdef` or a longer string)
+5. Add it to your `.env.local` file
+
+**Important for Production:**
+- Add this environment variable to your Vercel project settings as well
+
 ## Verify It's Working
 
 After restarting, the posts should fetch correctly and the map should display. The error should disappear!
