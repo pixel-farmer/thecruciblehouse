@@ -130,7 +130,7 @@ export default function CommunityPage() {
       }
       
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initMap`;
       script.async = true;
       script.defer = true;
       
@@ -242,6 +242,7 @@ export default function CommunityPage() {
       if (!hasPaidMembership) {
         // Show message when user tries to interact
         const overlay = document.createElement('div');
+        overlay.setAttribute('data-upgrade-overlay', 'true');
         overlay.style.cssText = `
           position: absolute;
           top: 0;
@@ -379,6 +380,18 @@ export default function CommunityPage() {
         disableDoubleClickZoom: !hasPaidMembership,
         draggable: hasPaidMembership,
       });
+
+      // Remove overlay if membership becomes active
+      if (hasPaidMembership) {
+        const mapElement = document.getElementById('community-map');
+        if (mapElement) {
+          // Find and remove the upgrade overlay
+          const overlay = mapElement.querySelector('[data-upgrade-overlay="true"]');
+          if (overlay) {
+            overlay.remove();
+          }
+        }
+      }
     }
   }, [mapInstance, hasPaidMembership]);
 
@@ -417,6 +430,7 @@ export default function CommunityPage() {
       // Add overlay for fullscreen map if no membership
       if (!hasPaidMembership) {
         const overlay = document.createElement('div');
+        overlay.setAttribute('data-upgrade-overlay-fullscreen', 'true');
         overlay.style.cssText = `
           position: absolute;
           top: 0;
@@ -552,6 +566,18 @@ export default function CommunityPage() {
         disableDoubleClickZoom: !hasPaidMembership,
         draggable: hasPaidMembership,
       });
+
+      // Remove overlay if membership becomes active
+      if (hasPaidMembership) {
+        const fullscreenMapElement = document.getElementById('fullscreen-map');
+        if (fullscreenMapElement) {
+          // Find and remove the upgrade overlay
+          const overlay = fullscreenMapElement.querySelector('[data-upgrade-overlay-fullscreen="true"]');
+          if (overlay) {
+            overlay.remove();
+          }
+        }
+      }
     }
   }, [fullscreenMapInstance, hasPaidMembership]);
 

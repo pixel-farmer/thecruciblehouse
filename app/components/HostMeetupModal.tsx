@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface HostMeetupModalProps {
@@ -9,13 +9,129 @@ interface HostMeetupModalProps {
   onSuccess: () => void;
 }
 
+// Country and state data
+const COUNTRIES = [
+  { code: 'AR', name: 'Argentina' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'CN', name: 'China' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IN', name: 'India' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'OTHER', name: 'Other' },
+];
+
+const US_STATES = [
+  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
+  'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
+  'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi',
+  'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico',
+  'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania',
+  'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
+  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming', 'District of Columbia',
+];
+
+const CA_PROVINCES = [
+  'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
+  'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
+  'Quebec', 'Saskatchewan', 'Yukon',
+];
+
+const AU_STATES = [
+  'Australian Capital Territory', 'New South Wales', 'Northern Territory', 'Queensland',
+  'South Australia', 'Tasmania', 'Victoria', 'Western Australia',
+];
+
+// Map countries to their states/provinces
+const COUNTRY_STATES: Record<string, string[]> = {
+  'US': US_STATES,
+  'CA': CA_PROVINCES,
+  'AU': AU_STATES,
+  // Add more countries as needed
+};
+
 export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeetupModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
+  const [country, setCountry] = useState('');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setTitle('');
+      setDescription('');
+      setTime('');
+      setCountry('');
+      setState('');
+      setCity('');
+      setError(null);
+    }
+  }, [isOpen]);
+
+
+  // Get available states/provinces for selected country
+  const getAvailableStates = (): string[] => {
+    if (!country || country === 'OTHER') return [];
+    return COUNTRY_STATES[country] || [];
+  };
+
+  // Build location string from components
+  const buildLocationString = (): string => {
+    const parts: string[] = [];
+    if (city) parts.push(city);
+    if (state) parts.push(state);
+    if (country && country !== 'OTHER') {
+      const countryName = COUNTRIES.find(c => c.code === country)?.name || country;
+      parts.push(countryName);
+    } else if (country === 'OTHER') {
+      // If other, we'll need a text field for country name - for now just use city and state
+    }
+    return parts.join(', ');
+  };
 
   if (!isOpen) return null;
 
@@ -23,8 +139,17 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
     e.preventDefault();
     setError(null);
 
-    if (!title.trim() || !description.trim() || !time || !location.trim()) {
-      setError('Please fill in all fields');
+    const locationString = buildLocationString();
+
+    if (!title.trim() || !description.trim() || !time || !country || !city.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    // If country has states/provinces, require state selection
+    const availableStates = getAvailableStates();
+    if (availableStates.length > 0 && !state) {
+      setError('Please select a state/province');
       return;
     }
 
@@ -56,7 +181,7 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
           title: title.trim(),
           description: description.trim(),
           event_time: time,
-          location: location.trim(),
+          location: locationString,
         }),
       });
 
@@ -65,7 +190,9 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
         setTitle('');
         setDescription('');
         setTime('');
-        setLocation('');
+        setCountry('');
+        setState('');
+        setCity('');
         onSuccess();
         onClose();
       } else {
@@ -84,7 +211,9 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
       setTitle('');
       setDescription('');
       setTime('');
-      setLocation('');
+      setCountry('');
+      setState('');
+      setCity('');
       setError(null);
       onClose();
     }
@@ -255,7 +384,7 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label
-              htmlFor="location"
+              htmlFor="country"
               style={{
                 display: 'block',
                 marginBottom: '0.5rem',
@@ -265,16 +394,106 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
                 color: 'var(--text-dark)',
               }}
             >
-              Location *
+              Country *
             </label>
-            <input
-              id="location"
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+            <select
+              id="country"
+              value={country}
+              onChange={(e) => {
+                setCountry(e.target.value);
+                setState(''); // Reset state when country changes
+              }}
               disabled={loading}
               required
-              maxLength={200}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '1rem',
+                outline: 'none',
+                boxSizing: 'border-box',
+                backgroundColor: 'white',
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              <option value="">Select a country</option>
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {getAvailableStates().length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label
+                htmlFor="state"
+                style={{
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: 'var(--text-dark)',
+                }}
+              >
+                State/Province *
+              </label>
+              <select
+                id="state"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                disabled={loading || !country}
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '1px solid #ddd',
+                  borderRadius: '8px',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'white',
+                  cursor: loading || !country ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <option value="">Select a state/province</option>
+                {getAvailableStates().map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label
+              htmlFor="city"
+              style={{
+                display: 'block',
+                marginBottom: '0.5rem',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                color: 'var(--text-dark)',
+              }}
+            >
+              City *
+            </label>
+            <input
+              id="city"
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={loading}
+              required
+              maxLength={100}
+              placeholder="Enter city name"
               style={{
                 width: '100%',
                 padding: '0.75rem',
@@ -285,7 +504,6 @@ export default function HostMeetupModal({ isOpen, onClose, onSuccess }: HostMeet
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
-              placeholder="e.g., Local Café, 123 Main St"
             />
           </div>
 

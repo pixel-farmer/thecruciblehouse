@@ -9,6 +9,57 @@ import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../../components/ScrollAnimation';
 import styles from '../../styles/Profile.module.css';
 
+// Country list (alphabetical)
+const COUNTRIES = [
+  { code: 'AR', name: 'Argentina' },
+  { code: 'AU', name: 'Australia' },
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BR', name: 'Brazil' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'CL', name: 'Chile' },
+  { code: 'CN', name: 'China' },
+  { code: 'CO', name: 'Colombia' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EG', name: 'Egypt' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IN', name: 'India' },
+  { code: 'ID', name: 'Indonesia' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IL', name: 'Israel' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'JP', name: 'Japan' },
+  { code: 'KR', name: 'South Korea' },
+  { code: 'MY', name: 'Malaysia' },
+  { code: 'MX', name: 'Mexico' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'NZ', name: 'New Zealand' },
+  { code: 'NO', name: 'Norway' },
+  { code: 'PH', name: 'Philippines' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'RU', name: 'Russia' },
+  { code: 'SA', name: 'Saudi Arabia' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'ZA', name: 'South Africa' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'SE', name: 'Sweden' },
+  { code: 'CH', name: 'Switzerland' },
+  { code: 'TH', name: 'Thailand' },
+  { code: 'TR', name: 'Turkey' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
+  { code: 'VN', name: 'Vietnam' },
+  { code: 'OTHER', name: 'Other' },
+];
+
 export default function EditProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -20,8 +71,10 @@ export default function EditProfilePage() {
   const [selectedMediums, setSelectedMediums] = useState<string[]>([]);
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
+  const [country, setCountry] = useState('');
   const [cityPublic, setCityPublic] = useState(true);
   const [statePublic, setStatePublic] = useState(true);
+  const [countryPublic, setCountryPublic] = useState(true);
   const initialLoadComplete = useRef(false);
 
   useEffect(() => {
@@ -43,6 +96,15 @@ export default function EditProfilePage() {
         setBioText(userBio);
         const mediums = session.user.user_metadata?.favorite_mediums || [];
         setSelectedMediums(Array.isArray(mediums) ? mediums : []);
+        const userCity = session.user.user_metadata?.city || '';
+        setCity(userCity);
+        const userState = session.user.user_metadata?.state || '';
+        setState(userState);
+        const userCountry = session.user.user_metadata?.country || '';
+        setCountry(userCountry);
+        setCityPublic(session.user.user_metadata?.city_public !== false);
+        setStatePublic(session.user.user_metadata?.state_public !== false);
+        setCountryPublic(session.user.user_metadata?.country_public !== false);
         setLoading(false);
         initialLoadComplete.current = true;
       } catch (error) {
@@ -76,8 +138,11 @@ export default function EditProfilePage() {
         setCity(userCity);
         const userState = session.user.user_metadata?.state || '';
         setState(userState);
+        const userCountry = session.user.user_metadata?.country || '';
+        setCountry(userCountry);
         setCityPublic(session.user.user_metadata?.city_public !== false);
         setStatePublic(session.user.user_metadata?.state_public !== false);
+        setCountryPublic(session.user.user_metadata?.country_public !== false);
         if (!initialLoadComplete.current) {
           setLoading(false);
           initialLoadComplete.current = true;
@@ -287,13 +352,17 @@ export default function EditProfilePage() {
       // Update location fields
       const cityInput = formData.get('city') as string;
       const stateInput = formData.get('state') as string;
+      const countryInput = formData.get('country') as string;
       const cityPublicInput = formData.get('cityPublic') === 'on' || formData.get('cityPublic') === 'true';
       const statePublicInput = formData.get('statePublic') === 'on' || formData.get('statePublic') === 'true';
+      const countryPublicInput = formData.get('countryPublic') === 'on' || formData.get('countryPublic') === 'true';
       
       updatedMetadata.city = cityInput && cityInput.trim() ? cityInput.trim() : null;
       updatedMetadata.city_public = cityPublicInput;
       updatedMetadata.state = stateInput && stateInput.trim() ? stateInput.trim() : null;
       updatedMetadata.state_public = statePublicInput;
+      updatedMetadata.country = countryInput && countryInput.trim() ? countryInput.trim() : null;
+      updatedMetadata.country_public = countryPublicInput;
 
       console.log('Updating user metadata:', {
         hasAvatar: shouldUpdateAvatar,
@@ -573,6 +642,59 @@ export default function EditProfilePage() {
                           </div>
                           <p className={styles.fileHint}>
                             Your state location (optional)
+                          </p>
+                        </div>
+
+                        <div className={styles.formGroup}>
+                          <label htmlFor="country" className={styles.formLabel}>
+                            Country
+                          </label>
+                          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <select
+                              id="country"
+                              name="country"
+                              value={country}
+                              onChange={(e) => setCountry(e.target.value)}
+                              className={styles.formInput}
+                              style={{ flex: 1, padding: '0.75rem', backgroundColor: 'white' }}
+                            >
+                              <option value="">Select a country</option>
+                              {COUNTRIES.map((c) => (
+                                <option key={c.code} value={c.name}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <input
+                                type="hidden"
+                                name="countryPublic"
+                                value={countryPublic ? 'true' : 'false'}
+                              />
+                              <label style={{ 
+                                fontSize: '0.85rem', 
+                                color: 'var(--text-light)',
+                                fontFamily: 'var(--font-inter)',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}>
+                                <input
+                                  type="checkbox"
+                                  checked={countryPublic}
+                                  onChange={(e) => setCountryPublic(e.target.checked)}
+                                  style={{ 
+                                    cursor: 'pointer',
+                                    accentColor: 'var(--accent-color)'
+                                  }}
+                                />
+                                <span>Public</span>
+                              </label>
+                            </div>
+                          </div>
+                          <p className={styles.fileHint}>
+                            Your country location (optional)
                           </p>
                         </div>
                       </div>

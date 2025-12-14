@@ -62,6 +62,17 @@ NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=your-map-id
 **Important for Production:**
 - Add this environment variable to your Vercel project settings as well
 
+## Google Places API (Required for Meetup Location)
+
+The "Host a Meetup" form uses Google Places Autocomplete for location search. You need to enable the Places API:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Navigate to **APIs & Services** → **Library**
+3. Search for "Places API"
+4. Click on **Places API** and click **Enable**
+
+**Note:** Make sure your API key has the Places API enabled, and that the API key restrictions allow access from your domain.
+
 ## Verify It's Working
 
 After restarting, the posts should fetch correctly and the map should display. The error should disappear!
