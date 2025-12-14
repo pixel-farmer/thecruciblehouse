@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch subscription details from Stripe
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
 
     return NextResponse.json({
       hasSubscription: true,
