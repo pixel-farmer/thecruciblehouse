@@ -35,6 +35,8 @@ export default function CommissionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasProMembership, setHasProMembership] = useState(false);
+  const [recentMembers, setRecentMembers] = useState<any[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
 
   const categories = [
     'All',
@@ -58,7 +60,29 @@ export default function CommissionsPage() {
   useEffect(() => {
     fetchCommissions();
     checkMembershipStatus();
+    fetchRecentMembers();
   }, []);
+
+  const fetchRecentMembers = async () => {
+    try {
+      setMembersLoading(true);
+      const response = await fetch('/api/members/recent');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setRecentMembers(data.members || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('Failed to fetch recent members:', response.status, errorData);
+        setRecentMembers([]);
+      }
+    } catch (error) {
+      console.error('Error fetching recent members:', error);
+      setRecentMembers([]);
+    } finally {
+      setMembersLoading(false);
+    }
+  };
 
   const checkMembershipStatus = async () => {
     try {
@@ -286,29 +310,49 @@ export default function CommissionsPage() {
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Recently Active Members</h3>
-                  <div className={styles.memberList}>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JD</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>John Doe</p>
-                        <p className={styles.memberActivity}>Active 2 hours ago</p>
-                      </div>
+                  {membersLoading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                      Loading...
                     </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>JS</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Jane Smith</p>
-                        <p className={styles.memberActivity}>Active 5 hours ago</p>
-                      </div>
+                  ) : recentMembers.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem' }}>
+                      No active members yet.
                     </div>
-                    <div className={styles.memberItem}>
-                      <div className={styles.memberAvatar}>AB</div>
-                      <div className={styles.memberInfo}>
-                        <p className={styles.memberName}>Alex Brown</p>
-                        <p className={styles.memberActivity}>Active 1 day ago</p>
-                      </div>
+                  ) : (
+                    <div className={styles.memberList}>
+                      {recentMembers.map((member) => (
+                        <Link key={member.id} href={`/artist/${member.slug || member.id}`} style={{ textDecoration: 'none' }}>
+                          <div className={styles.memberItem}>
+                            {member.avatar && member.avatar.startsWith('http') ? (
+                              <div style={{
+                                width: '45px',
+                                height: '45px',
+                                borderRadius: '50%',
+                                overflow: 'hidden',
+                                flexShrink: 0,
+                              }}>
+                                <Image
+                                  src={member.avatar}
+                                  alt={member.name || 'Member'}
+                                  width={45}
+                                  height={45}
+                                  style={{ objectFit: 'cover' }}
+                                />
+                              </div>
+                            ) : (
+                              <div className={styles.memberAvatar}>
+                                {member.initials || 'U'}
+                              </div>
+                            )}
+                            <div className={styles.memberInfo}>
+                              <p className={styles.memberName}>{member.name || 'Unknown'}</p>
+                              <p className={styles.memberActivity}>{member.activity || 'Recently active'}</p>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </ScrollAnimation>
 
