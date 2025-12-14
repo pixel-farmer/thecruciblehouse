@@ -530,7 +530,7 @@ export default function ProfilePage() {
   let userInitials = 'U';
   const nameForInitials = displayName || userName;
   if (nameForInitials && nameForInitials !== emailPrefix) {
-    const nameParts = nameForInitials.split(' ').filter(part => part.length > 0);
+    const nameParts = nameForInitials.split(' ').filter((part: string) => part.length > 0);
     if (nameParts.length >= 2) {
       userInitials = `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
     } else if (nameParts.length === 1 && nameParts[0].length > 0) {
@@ -551,17 +551,18 @@ export default function ProfilePage() {
   const statePublic = user.user_metadata?.state_public !== false;
 
   // Create slug for artist page
-  const createSlug = (name: string): string => {
+  const createSlug = (name: string | null | undefined): string => {
+    if (!name || typeof name !== 'string') return 'user';
     return name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '');
+      .replace(/(^-|-$)/g, '') || 'user';
   };
 
-  const userHandleForSlug = user.user_metadata?.handle || null;
+  const userHandleForSlug = userMetadata.handle || null;
   const artistSlug = userHandleForSlug 
-    ? userHandleForSlug.replace('@', '').toLowerCase()
-    : (displayName ? createSlug(displayName) : 'user');
+    ? (userHandleForSlug.replace('@', '').toLowerCase() || 'user')
+    : createSlug(displayName || userName || emailPrefix);
 
   return (
     <motion.div
