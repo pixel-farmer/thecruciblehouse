@@ -467,20 +467,34 @@ export default function ProfilePage() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   };
 
   const formatJoinDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      year: 'numeric',
-    });
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.error('Error formatting join date:', error);
+      return '';
+    }
   };
 
 
@@ -496,31 +510,38 @@ export default function ProfilePage() {
     return null;
   }
 
-  const displayName = user.user_metadata?.display_name || null;
+  // Safe user data extraction with fallbacks
+  const userMetadata = user.user_metadata || {};
+  const displayName = userMetadata.display_name || null;
+  const email = user.email || '';
+  const emailPrefix = email ? email.split('@')[0] : '';
   const userName = displayName || 
-                  user.user_metadata?.full_name || 
-                  user.user_metadata?.name || 
-                  user.email?.split('@')[0] || 
+                  userMetadata.full_name || 
+                  userMetadata.name || 
+                  emailPrefix || 
                   'User';
   
-  const userHandle = user.user_metadata?.handle || 
-                     (user.email ? `@${user.email.split('@')[0]}` : '@user');
+  const userHandle = userMetadata.handle || 
+                     (email ? `@${emailPrefix}` : '@user');
   const userAvatar = user.user_metadata?.avatar_url || 
                      user.user_metadata?.picture || null;
   
   // Get user initials for avatar - use display name if available
   let userInitials = 'U';
   const nameForInitials = displayName || userName;
-  if (nameForInitials && nameForInitials !== user.email?.split('@')[0]) {
-    const nameParts = nameForInitials.split(' ');
-    userInitials = nameParts.length >= 2 
-      ? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
-      : nameParts[0][0].toUpperCase();
-  } else if (user.email) {
+  const emailPrefix = user.email?.split('@')[0];
+  if (nameForInitials && nameForInitials !== emailPrefix) {
+    const nameParts = nameForInitials.split(' ').filter(part => part.length > 0);
+    if (nameParts.length >= 2) {
+      userInitials = `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase();
+    } else if (nameParts.length === 1 && nameParts[0].length > 0) {
+      userInitials = nameParts[0][0].toUpperCase();
+    }
+  } else if (user.email && user.email.length > 0) {
     userInitials = user.email[0].toUpperCase();
   }
 
-  const joinDate = formatJoinDate(user.created_at);
+  const joinDate = user.created_at ? formatJoinDate(user.created_at) : '';
   const portfolioUrl = user.user_metadata?.portfolio_url || '';
   const bio = user.user_metadata?.bio || '';
   const discipline = user.user_metadata?.discipline || '';
@@ -541,7 +562,7 @@ export default function ProfilePage() {
   const userHandleForSlug = user.user_metadata?.handle || null;
   const artistSlug = userHandleForSlug 
     ? userHandleForSlug.replace('@', '').toLowerCase()
-    : createSlug(displayName);
+    : (displayName ? createSlug(displayName) : 'user');
 
   return (
     <motion.div
