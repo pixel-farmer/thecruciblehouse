@@ -97,6 +97,14 @@ export async function GET(
       }
     }
 
+    // Get location data (only include if public)
+    const city = user.user_metadata?.city || '';
+    const state = user.user_metadata?.state || '';
+    const country = user.user_metadata?.country || '';
+    const cityPublic = user.user_metadata?.city_public !== false;
+    const statePublic = user.user_metadata?.state_public !== false;
+    const countryPublic = user.user_metadata?.country_public !== false;
+
     const artist = {
       id: user.id,
       slug,
@@ -105,6 +113,10 @@ export async function GET(
       avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       gallery_image_url: galleryImageUrl,
       artwork: artworkData || [],
+      city: city && cityPublic ? city : null,
+      state: state && statePublic ? state : null,
+      country: country && countryPublic ? country : null,
+      created_at: user.created_at || null,
     };
 
     return NextResponse.json({ artist });

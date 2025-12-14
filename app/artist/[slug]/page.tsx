@@ -68,6 +68,33 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
     return null;
   }
 
+  // Format join date
+  const formatJoinDate = (dateString: string | null) => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.error('Error formatting join date:', error);
+      return '';
+    }
+  };
+
+  // Build location string from public fields
+  const locationParts: string[] = [];
+  if (artist.city) locationParts.push(artist.city);
+  if (artist.state) locationParts.push(artist.state);
+  if (artist.country) locationParts.push(artist.country);
+  const location = locationParts.join(', ');
+  const joinDate = formatJoinDate(artist.created_at);
+  const locationAndJoinDate = [location, joinDate ? `Joined ${joinDate}` : '']
+    .filter(Boolean)
+    .join(' • ');
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -79,9 +106,19 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
           <ScrollAnimation>
             <div className={styles.aboutContent} style={{ marginBottom: '40px' }}>
               <div className={styles.aboutText}>
-                <h1 className={styles.sectionTitle} style={{ textAlign: 'left', marginBottom: '20px' }}>
+                <h1 className={styles.sectionTitle} style={{ textAlign: 'left', marginBottom: '10px' }}>
                   {artist.name}
                 </h1>
+                {locationAndJoinDate && (
+                  <p style={{ 
+                    fontSize: '0.95rem', 
+                    color: 'var(--text-light)', 
+                    marginBottom: '20px',
+                    fontFamily: 'var(--font-inter)'
+                  }}>
+                    {locationAndJoinDate}
+                  </p>
+                )}
                 {artist.bio ? (
                   <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)' }}>
                     {artist.bio}
