@@ -529,7 +529,6 @@ export default function ProfilePage() {
   // Get user initials for avatar - use display name if available
   let userInitials = 'U';
   const nameForInitials = displayName || userName;
-  const emailPrefix = user.email?.split('@')[0];
   if (nameForInitials && nameForInitials !== emailPrefix) {
     const nameParts = nameForInitials.split(' ').filter(part => part.length > 0);
     if (nameParts.length >= 2) {
