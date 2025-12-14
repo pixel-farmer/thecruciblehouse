@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 import styles from '../../styles/Artist.module.css';
 import ScrollAnimation from '../../components/ScrollAnimation';
 import ProBadge from '../../components/ProBadge';
@@ -15,6 +16,19 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
   const [artist, setArtist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isStartingConversation, setIsStartingConversation] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  // Get current user ID
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        setCurrentUserId(session.user.id);
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   useEffect(() => {
     const fetchArtist = async () => {
@@ -96,6 +110,51 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
     .filter(Boolean)
     .join(' • ');
 
+  // Handle starting a conversation
+  const handleStartConversation = async () => {
+    try {
+      setIsStartingConversation(true);
+      
+      // Check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session || !session.user) {
+        router.push('/login');
+        return;
+      }
+
+      // Don't allow messaging yourself
+      if (session.user.id === artist.id) {
+        return;
+      }
+
+      // Create or get existing conversation
+      const response = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ otherUserId: artist.id }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Redirect to messages page with conversation ID to auto-open it
+        router.push(`/messages?conversation=${data.conversation.id}`);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to start conversation:', errorData);
+        alert('Failed to start conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      alert('Failed to start conversation. Please try again.');
+    } finally {
+      setIsStartingConversation(false);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -119,14 +178,61 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                     {artist.name}
                   </h1>
                   {artist.discipline && (
-                    <p style={{ 
+                    <div style={{ 
                       fontSize: '0.95rem', 
                       color: 'var(--text-light)', 
                       marginBottom: '5px',
-                      fontFamily: 'var(--font-inter)'
+                      fontFamily: 'var(--font-inter)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
                     }}>
-                      {artist.discipline}
-                    </p>
+                      <span>{artist.discipline}</span>
+                      {currentUserId && currentUserId !== artist.id && (
+                        <button
+                          onClick={handleStartConversation}
+                          disabled={isStartingConversation}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: isStartingConversation ? 'wait' : 'pointer',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: isStartingConversation ? 0.6 : 1,
+                            transition: 'opacity 0.2s ease',
+                            color: 'var(--text-light)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isStartingConversation) {
+                              e.currentTarget.style.opacity = '0.7';
+                              e.currentTarget.style.color = 'var(--accent-color)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = isStartingConversation ? '0.6' : '1';
+                            e.currentTarget.style.color = 'var(--text-light)';
+                          }}
+                          aria-label="Start conversation"
+                          title="Send a message"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   )}
                   <div style={{ 
                     fontSize: '0.95rem', 

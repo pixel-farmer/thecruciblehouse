@@ -162,7 +162,7 @@
 .messagesView {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  min-height: 0;
 }
 
 .messagesHeader {
@@ -216,10 +216,14 @@
 .messagesContainer {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-height: 0;
+  scroll-behavior: auto;
 }
 
 .loading,
@@ -235,16 +239,40 @@
 
 .message {
   display: flex;
+  gap: 0.5rem;
   max-width: 70%;
+  align-items: flex-start;
 }
 
 .message.sent {
   align-self: flex-end;
   margin-left: auto;
+  flex-direction: row-reverse;
 }
 
 .message.received {
   align-self: flex-start;
+}
+
+.messageAvatar {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 2px;
+}
+
+.messageAvatarPlaceholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-inter);
 }
 
 .messageContent {
@@ -284,7 +312,8 @@
   gap: 1rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid #eee;
-  align-items: flex-end;
+  align-items: flex-start;
+  flex-shrink: 0;
 }
 
 .messageTextarea {
@@ -296,6 +325,17 @@
   font-size: 0.95rem;
   resize: none;
   outline: none;
+  height: 44px;
+  line-height: 1.2;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+  vertical-align: middle;
+}
+
+.messageTextarea::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .messageTextarea:focus {
@@ -313,6 +353,11 @@
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  height: 44px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sendButton:hover:not(:disabled) {
@@ -327,7 +372,7 @@
 @media (max-width: 768px) {
   .messagesLayout {
     grid-template-columns: 1fr;
-    height: auto;
+    height: calc(100vh - 200px);
     max-height: none;
   }
 

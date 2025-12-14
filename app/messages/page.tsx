@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, Suspense } from 'react';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
@@ -38,8 +38,9 @@ interface Message {
   is_read: boolean;
 }
 
-export default function MessagesPage() {
+function MessagesPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -48,6 +49,8 @@ export default function MessagesPage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,9 +71,75 @@ export default function MessagesPage() {
     }
   }, [selectedConversation]);
 
+  // Set up real-time subscription for new messages
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (!selectedConversation || !userId) return;
+
+    const channel = supabase
+      .channel(`messages:${selectedConversation.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${selectedConversation.id}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as Message;
+          
+          // Only add the message if it's not already in the list
+          setMessages((prev) => {
+            const messageExists = prev.some((msg) => msg.id === newMessage.id);
+            if (messageExists) return prev;
+            
+            // Add the new message (will replace optimistic update if it exists)
+            return [...prev, newMessage];
+          });
+          
+          // Update conversations list to show new last message
+          setConversations((prev) =>
+            prev.map((conv) =>
+              conv.id === selectedConversation.id
+                ? {
+                    ...conv,
+                    lastMessage: {
+                      content: newMessage.content,
+                      created_at: newMessage.created_at,
+                    },
+                  }
+                : conv
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount or conversation change
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedConversation?.id, userId]);
+
+  const isScrollable = (el: HTMLElement) => el.scrollHeight > el.clientHeight;
+
+  // Scroll to bottom when messages finish loading or count changes
+  useEffect(() => {
+    const el = messagesEndRef.current?.parentElement;
+    if (!el) return;
+    if (messagesLoading) return;
+    if (!messages.length) return;
+
+    // If not scrollable yet, wait one frame
+    if (!isScrollable(el)) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      });
+      return;
+    }
+
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [messagesLoading, messages.length]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -79,6 +148,10 @@ export default function MessagesPage() {
       return;
     }
     setUserId(session.user.id);
+    // Get current user's avatar
+    const avatarUrl = session.user.user_metadata?.avatar_url || 
+                     session.user.user_metadata?.picture || null;
+    setUserAvatar(avatarUrl);
   };
 
   const fetchConversations = async () => {
@@ -96,6 +169,21 @@ export default function MessagesPage() {
       if (response.ok) {
         const data = await response.json();
         setConversations(data.conversations || []);
+        
+        // Check if we have a conversation ID in the URL to auto-select
+        const conversationId = searchParams.get('conversation');
+        if (conversationId && !hasAutoSelected && data.conversations) {
+          const conversationToSelect = data.conversations.find(
+            (conv: Conversation) => conv.id === conversationId
+          );
+          if (conversationToSelect) {
+            setSelectedConversation(conversationToSelect);
+            setHasAutoSelected(true);
+            // Remove the query parameter from URL
+            router.replace('/messages');
+            return;
+          }
+        }
         
         // If no conversation selected and we have conversations, select the first one
         if (!selectedConversation && data.conversations && data.conversations.length > 0) {
@@ -132,13 +220,41 @@ export default function MessagesPage() {
     }
   };
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    // Prevent any scroll behavior
+    const scrollY = window.scrollY;
+    
     if (!newMessage.trim() || !selectedConversation || sending) return;
+
+    const messageToSend = newMessage.trim();
+    // Optimistically clear the input first
+    setNewMessage('');
+    
+    // Optimistically add message to UI (we'll replace with server response)
+    const optimisticMessage: Message = {
+      id: `temp-${Date.now()}`,
+      conversation_id: selectedConversation.id,
+      sender_id: userId || '',
+      content: messageToSend,
+      created_at: new Date().toISOString(),
+      is_read: false,
+    };
+    setMessages(prev => [...prev, optimisticMessage]);
 
     try {
       setSending(true);
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        // Revert optimistic update on error
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+        setNewMessage(messageToSend);
+        return;
+      }
 
       const response = await fetch('/api/messages', {
         method: 'POST',
@@ -148,32 +264,52 @@ export default function MessagesPage() {
         },
         body: JSON.stringify({
           conversation_id: selectedConversation.id,
-          content: newMessage.trim(),
+          content: messageToSend,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setMessages([...messages, data.message]);
-        setNewMessage('');
-        // Refresh conversations to update last message
-        fetchConversations();
+        const newMessageData = data.message;
+        
+        // Replace optimistic message with real one
+        setMessages(prev => prev.map(m => m.id === optimisticMessage.id ? newMessageData : m));
+        
+        // Update conversations list optimistically without full refetch
+        setConversations(prev => prev.map(conv => 
+          conv.id === selectedConversation.id
+            ? {
+                ...conv,
+                lastMessage: {
+                  content: newMessageData.content,
+                  created_at: newMessageData.created_at,
+                },
+              }
+            : conv
+        ));
       } else {
+        // Revert optimistic update on error
+        setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+        setNewMessage(messageToSend);
         const error = await response.json();
         console.error('Error sending message:', error);
         alert('Failed to send message. Please try again.');
       }
     } catch (error) {
+      // Revert optimistic update on error
+      setMessages(prev => prev.filter(m => m.id !== optimisticMessage.id));
+      setNewMessage(messageToSend);
       console.error('Error sending message:', error);
       alert('An error occurred. Please try again.');
     } finally {
       setSending(false);
+      // Restore scroll position to prevent page scroll
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   const createUserSlug = (name: string): string => {
     return name
@@ -209,10 +345,6 @@ export default function MessagesPage() {
     >
       <section className={styles.messages} style={{ paddingTop: '120px' }}>
         <div className={styles.container}>
-          <ScrollAnimation>
-            <h2 className={styles.sectionTitle}>Messages</h2>
-          </ScrollAnimation>
-
           <div className={styles.messagesLayout}>
             {/* Conversations List */}
             <div className={styles.conversationsList}>
@@ -314,46 +446,80 @@ export default function MessagesPage() {
                         <p>No messages yet. Start the conversation!</p>
                       </div>
                     ) : (
-                      messages.map((message) => (
-                        <div
-                          key={message.id}
-                          className={`${styles.message} ${message.sender_id === userId ? styles.sent : styles.received}`}
-                        >
-                          <div className={styles.messageContent}>
-                            <p>{message.content}</p>
-                            <span className={styles.messageTime}>
-                              {formatTime(message.created_at)}
-                            </span>
+                      messages.map((message) => {
+                        const isSent = message.sender_id === userId;
+                        const avatar = isSent 
+                          ? userAvatar 
+                          : selectedConversation?.otherUser.avatar || null;
+                        const name = isSent 
+                          ? '' // Don't need name for sent messages
+                          : selectedConversation?.otherUser.name || '';
+                        
+                        return (
+                          <div
+                            key={message.id}
+                            className={`${styles.message} ${isSent ? styles.sent : styles.received}`}
+                          >
+                            {!isSent && (
+                              <div className={styles.messageAvatar}>
+                                {avatar ? (
+                                  <Image
+                                    src={avatar}
+                                    alt={name || 'User'}
+                                    width={28}
+                                    height={28}
+                                    style={{ borderRadius: '50%', objectFit: 'cover' }}
+                                  />
+                                ) : (
+                                  <div className={styles.messageAvatarPlaceholder}>
+                                    {name ? name.charAt(0).toUpperCase() : 'U'}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <div className={styles.messageContent}>
+                              <p>{message.content}</p>
+                              <span className={styles.messageTime}>
+                                {formatTime(message.created_at)}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                     <div ref={messagesEndRef} />
                   </div>
 
-                  <div className={styles.messageInput}>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSendMessage(e);
+                    }}
+                    className={styles.messageInput}
+                  >
                     <textarea
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
-                          handleSendMessage();
+                          handleSendMessage(e);
                         }
                       }}
                       placeholder="Type a message..."
-                      rows={2}
+                      rows={1}
                       maxLength={1000}
                       className={styles.messageTextarea}
                     />
                     <button
-                      onClick={handleSendMessage}
+                      type="submit"
                       disabled={!newMessage.trim() || sending}
                       className={styles.sendButton}
                     >
                       {sending ? 'Sending...' : 'Send'}
                     </button>
-                  </div>
+                  </form>
                 </>
               ) : (
                 <div className={styles.noConversationSelected}>
@@ -368,3 +534,10 @@ export default function MessagesPage() {
   );
 }
 
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MessagesPageContent />
+    </Suspense>
+  );
+}
