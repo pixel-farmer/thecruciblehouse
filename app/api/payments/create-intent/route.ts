@@ -65,7 +65,13 @@ export async function POST(request: NextRequest) {
     });
 
     const invoice = subscription.latest_invoice as Stripe.Invoice;
-    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+    // Access payment_intent from the expanded invoice
+    // TypeScript may not recognize expanded fields, so we use type assertion
+    const paymentIntent = (invoice as any).payment_intent as Stripe.PaymentIntent;
+
+    if (!paymentIntent || !paymentIntent.client_secret) {
+      throw new Error('Failed to retrieve payment intent from subscription');
+    }
 
     return NextResponse.json({ 
       clientSecret: paymentIntent.client_secret,
