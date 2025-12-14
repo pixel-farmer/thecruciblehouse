@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch subscription details from Stripe
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId) as Stripe.Subscription;
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
     return NextResponse.json({
       hasSubscription: true,
@@ -210,8 +210,8 @@ export async function GET(request: NextRequest) {
         status: subscription.status,
         cancel_at_period_end: subscription.cancel_at_period_end,
         cancel_at: subscription.cancel_at,
-        current_period_end: subscription.current_period_end,
-        current_period_start: subscription.current_period_start,
+        current_period_end: (subscription as any).current_period_end,
+        current_period_start: (subscription as any).current_period_start,
       },
     });
   } catch (error: any) {
