@@ -11,7 +11,7 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if we have a password reset token in the URL hash
+    // Check if we have authentication tokens in the URL hash
     // Supabase redirects to the Site URL (home page) with hash fragments
     if (typeof window !== 'undefined') {
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
@@ -22,6 +22,12 @@ export default function Home() {
       if (accessToken && type === 'recovery') {
         // Preserve the hash when redirecting
         router.push(`/reset-password${window.location.hash}`);
+      }
+      // If we have a signup confirmation token, redirect to login page with success message
+      // The session will be automatically confirmed by Supabase when the hash is processed
+      else if (accessToken && type === 'signup') {
+        // Clear the hash and redirect to login with success
+        router.push('/login?confirmed=true');
       }
     }
   }, [router]);
