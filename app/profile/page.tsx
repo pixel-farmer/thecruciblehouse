@@ -1193,33 +1193,33 @@ export default function ProfilePage() {
                             <div style={{
                               padding: '0.5rem 1rem',
                               borderRadius: '20px',
-                              backgroundColor: (subscriptionStatus.subscription?.status === 'active' || hasActiveMembership) ? '#10b981' : '#f59e0b',
+                              backgroundColor: (subscriptionStatus?.subscription?.status === 'active' || hasActiveMembership) ? '#10b981' : '#f59e0b',
                               color: 'white',
                               fontFamily: 'var(--font-inter)',
                               fontSize: '0.85rem',
                               fontWeight: 600,
                               textTransform: 'uppercase',
                             }}>
-                              {(subscriptionStatus.subscription?.status === 'active' || hasActiveMembership) ? 'Active' : (subscriptionStatus.subscription?.status || 'Active')}
+                              {(subscriptionStatus?.subscription?.status === 'active' || hasActiveMembership) ? 'Active' : (subscriptionStatus?.subscription?.status || 'Active')}
                             </div>
                           </div>
 
-                          {subscriptionStatus.subscription?.current_period_end && (
+                          {subscriptionStatus?.subscription?.current_period_end && (
                             <p style={{
                               fontFamily: 'var(--font-inter)',
                               fontSize: '0.9rem',
                               color: 'var(--text-light)',
                               margin: '0.5rem 0',
                             }}>
-                              {subscriptionStatus.subscription.cancel_at_period_end 
-                                ? `Subscription will ${subscriptionStatus.subscription.cancel_at ? 'end' : 'be cancelled'} on ${new Date(subscriptionStatus.subscription.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                                : `Next billing date: ${new Date(subscriptionStatus.subscription.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                              {subscriptionStatus?.subscription?.cancel_at_period_end 
+                                ? `Subscription will ${subscriptionStatus?.subscription?.cancel_at ? 'end' : 'be cancelled'} on ${new Date(subscriptionStatus?.subscription?.current_period_end! * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                                : `Next billing date: ${new Date(subscriptionStatus?.subscription?.current_period_end! * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
                               }
                             </p>
                           )}
                         </div>
 
-                        {subscriptionStatus.subscription?.cancel_at_period_end && subscriptionStatus.subscription?.id && (
+                        {subscriptionStatus?.subscription?.cancel_at_period_end && subscriptionStatus?.subscription?.id && (
                           <div style={{
                             marginTop: '1rem',
                           }}>

@@ -1648,46 +1648,6 @@ function CommunityPageContent() {
                         <span style={{ lineHeight: 1 }}>[ ]</span>
                       </button>
                     </div>
-                    {!hasPaidMembership && isLoggedIn && (
-                      <>
-                        <p style={{ 
-                          color: 'var(--text-light)', 
-                          fontFamily: 'var(--font-inter)',
-                          marginBottom: '1rem',
-                          fontSize: '0.9rem'
-                        }}>
-                          Try scrolling or zooming the map to upgrade and unlock full features.
-                        </p>
-                        <button
-                          onClick={handleUpgradeClick}
-                          className="inline-block focus:outline-none"
-                          style={{
-                            fontSize: '0.95rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '1px',
-                            fontFamily: 'var(--font-inter)',
-                            borderRadius: '20px',
-                            backgroundColor: '#ff6622',
-                            color: 'white',
-                            outline: 'none',
-                            border: 'none',
-                            textDecoration: 'none',
-                            transition: 'background-color 0.2s ease',
-                            padding: '8px 20px',
-                            cursor: 'pointer',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e55a1a';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ff6622';
-                          }}
-                        >
-                          UPGRADE
-                        </button>
-                      </>
-                    )}
                   </div>
                 </div>
               </ScrollAnimation>
