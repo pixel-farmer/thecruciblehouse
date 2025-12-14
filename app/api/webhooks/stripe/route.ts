@@ -241,7 +241,8 @@ export async function POST(request: NextRequest) {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
 
       // Only process membership payments (skip if it's part of a subscription)
-      if (paymentIntent.metadata?.type === 'membership' && paymentIntent.metadata?.userId && !paymentIntent.invoice) {
+      const invoiceId = (paymentIntent as any).invoice;
+      if (paymentIntent.metadata?.type === 'membership' && paymentIntent.metadata?.userId && !invoiceId) {
         const userId = paymentIntent.metadata.userId;
 
         // Get current user
