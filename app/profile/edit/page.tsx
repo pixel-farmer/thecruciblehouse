@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../../components/ScrollAnimation';
+import ProBadge from '../../components/ProBadge';
 import styles from '../../styles/Profile.module.css';
 
 // Country list (alphabetical)

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import styles from '../../styles/Artist.module.css';
 import ScrollAnimation from '../../components/ScrollAnimation';
+import ProBadge from '../../components/ProBadge';
 
 export default function ArtistDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -106,19 +107,71 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
           <ScrollAnimation>
             <div className={styles.aboutContent} style={{ marginBottom: '40px' }}>
               <div className={styles.aboutText}>
-                <h1 className={styles.sectionTitle} style={{ textAlign: 'left', marginBottom: '10px' }}>
-                  {artist.name}
-                </h1>
-                {locationAndJoinDate && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h1 style={{ 
+                    fontFamily: 'var(--font-playfair), serif',
+                    fontSize: '3rem',
+                    fontWeight: 600,
+                    textAlign: 'left',
+                    marginBottom: '10px',
+                    color: 'var(--primary-color)'
+                  }}>
+                    {artist.name}
+                  </h1>
                   <p style={{ 
                     fontSize: '0.95rem', 
                     color: 'var(--text-light)', 
-                    marginBottom: '20px',
-                    fontFamily: 'var(--font-inter)'
+                    marginBottom: '15px',
+                    fontFamily: 'var(--font-inter)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    flexWrap: 'wrap'
                   }}>
-                    {locationAndJoinDate}
+                    {locationAndJoinDate && <span>{locationAndJoinDate}</span>}
+                    {artist.isPro && (
+                      <span style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center',
+                        position: 'relative',
+                        width: '14px',
+                        height: '14px'
+                      }}>
+                        <div style={{
+                          position: 'relative',
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          backgroundColor: '#ff6622',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1.5px solid white',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                        }}>
+                          <svg
+                            width="8"
+                            height="8"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                        </div>
+                      </span>
+                    )}
                   </p>
-                )}
+                  <div style={{
+                    width: '60px',
+                    height: '3px',
+                    backgroundColor: 'var(--accent-color)',
+                    marginTop: '5px'
+                  }}></div>
+                </div>
                 {artist.bio ? (
                   <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)' }}>
                     {artist.bio}
@@ -140,7 +193,7 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                   </div>
                 )}
               </div>
-              <div className={styles.aboutImage}>
+              <div className={styles.aboutImage} style={{ position: 'relative' }}>
                 {artist.gallery_image_url || artist.avatar_url ? (
                   <Image
                     src={artist.gallery_image_url || artist.avatar_url}

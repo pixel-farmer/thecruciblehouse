@@ -7,6 +7,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
+import ProBadge from '../components/ProBadge';
 import styles from '../styles/Commissions.module.css';
 
 interface Commission {
@@ -342,6 +343,7 @@ export default function CommissionsPage() {
                                 borderRadius: '50%',
                                 overflow: 'hidden',
                                 flexShrink: 0,
+                                position: 'relative',
                               }}>
                                 <Image
                                   src={member.avatar}
@@ -350,10 +352,12 @@ export default function CommissionsPage() {
                                   height={45}
                                   style={{ objectFit: 'cover' }}
                                 />
+                                {member.isPro && <ProBadge size={14} />}
                               </div>
                             ) : (
-                              <div className={styles.memberAvatar}>
+                              <div className={styles.memberAvatar} style={{ position: 'relative' }}>
                                 {member.initials || 'U'}
+                                {member.isPro && <ProBadge size={14} />}
                               </div>
                             )}
                             <div className={styles.memberInfo}>

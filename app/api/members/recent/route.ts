@@ -163,6 +163,12 @@ export async function GET(request: NextRequest) {
               .replace(/[^a-z0-9]+/g, '-')
               .replace(/(^-|-$)/g, '');
 
+        // Check if user is pro
+        const userMetadata = user.user_metadata || {};
+        const membershipStatus = userMetadata.membership_status;
+        const hasPaidMembership = userMetadata.has_paid_membership;
+        const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+
         return {
           id: user.id,
           name: displayName,
@@ -170,6 +176,7 @@ export async function GET(request: NextRequest) {
           initials,
           activity: activityText,
           slug,
+          isPro: isPro,
         };
       });
 

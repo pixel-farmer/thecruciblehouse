@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
+import ProBadge from '../components/ProBadge';
 import styles from '../styles/Messages.module.css';
 
 interface Conversation {
@@ -19,6 +20,7 @@ interface Conversation {
     id: string;
     name: string;
     avatar: string | null;
+    isPro?: boolean;
   };
   unreadCount: number;
   lastMessage: {
@@ -230,7 +232,7 @@ export default function MessagesPage() {
                       className={`${styles.conversationItem} ${selectedConversation?.id === conv.id ? styles.active : ''}`}
                       onClick={() => setSelectedConversation(conv)}
                     >
-                      <div className={styles.conversationAvatar}>
+                      <div className={styles.conversationAvatar} style={{ position: 'relative' }}>
                         {conv.otherUser.avatar ? (
                           <Image
                             src={conv.otherUser.avatar}
@@ -244,6 +246,7 @@ export default function MessagesPage() {
                             {conv.otherUser.name.charAt(0).toUpperCase()}
                           </div>
                         )}
+                        {conv.otherUser.isPro && <ProBadge size={16} />}
                         {conv.unreadCount > 0 && (
                           <span className={styles.unreadBadge}>{conv.unreadCount}</span>
                         )}
@@ -275,19 +278,22 @@ export default function MessagesPage() {
                 <>
                   <div className={styles.messagesHeader}>
                     <div className={styles.messagesHeaderUser}>
-                      {selectedConversation.otherUser.avatar ? (
-                        <Image
-                          src={selectedConversation.otherUser.avatar}
-                          alt={selectedConversation.otherUser.name}
-                          width={40}
-                          height={40}
-                          style={{ borderRadius: '50%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <div className={styles.headerAvatarPlaceholder}>
-                          {selectedConversation.otherUser.name.charAt(0).toUpperCase()}
-                        </div>
-                      )}
+                      <div style={{ position: 'relative' }}>
+                        {selectedConversation.otherUser.avatar ? (
+                          <Image
+                            src={selectedConversation.otherUser.avatar}
+                            alt={selectedConversation.otherUser.name}
+                            width={40}
+                            height={40}
+                            style={{ borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div className={styles.headerAvatarPlaceholder}>
+                            {selectedConversation.otherUser.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        {selectedConversation.otherUser.isPro && <ProBadge size={14} />}
+                      </div>
                       <span className={styles.messagesHeaderName}>
                         {selectedConversation.otherUser.name}
                       </span>

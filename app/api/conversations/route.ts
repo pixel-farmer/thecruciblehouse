@@ -114,12 +114,19 @@ export async function GET(request: NextRequest) {
         const otherUserAvatar = otherUser?.user_metadata?.avatar_url || 
                               otherUser?.user_metadata?.picture || null;
 
+        // Check if other user is pro
+        const otherUserMetadata = otherUser?.user_metadata || {};
+        const membershipStatus = otherUserMetadata.membership_status;
+        const hasPaidMembership = otherUserMetadata.has_paid_membership;
+        const otherUserIsPro = membershipStatus === 'active' || hasPaidMembership === true;
+
         return {
           ...conv,
           otherUser: {
             id: otherUserId,
             name: otherUserDisplayName,
             avatar: otherUserAvatar,
+            isPro: otherUserIsPro,
           },
           unreadCount: unreadCount || 0,
           lastMessage: lastMessage || null,

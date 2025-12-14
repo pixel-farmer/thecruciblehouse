@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import ArtworkUploader from '../components/ArtworkUploader';
+import ProBadge from '../components/ProBadge';
 import styles from '../styles/Profile.module.css';
 
 export default function ProfilePage() {
@@ -576,7 +577,7 @@ export default function ProfilePage() {
             {/* Profile Header */}
             <ScrollAnimation>
               <div className={styles.profileHeader}>
-                <Link href="/profile" className={styles.avatarContainer} style={{ textDecoration: 'none' }}>
+                <Link href="/profile" className={styles.avatarContainer} style={{ textDecoration: 'none', position: 'relative' }}>
                   {userAvatar ? (
                     <Image
                       src={userAvatar}
@@ -590,6 +591,13 @@ export default function ProfilePage() {
                       <span>{userInitials}</span>
                     </div>
                   )}
+                  {(() => {
+                    const userMetadata = user?.user_metadata || {};
+                    const membershipStatus = userMetadata.membership_status;
+                    const hasPaidMembership = userMetadata.has_paid_membership;
+                    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+                    return isPro ? <ProBadge size={24} /> : null;
+                  })()}
                 </Link>
                 <div className={styles.profileInfo}>
                   <div className={styles.profileHeaderTop}>

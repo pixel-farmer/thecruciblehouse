@@ -10,6 +10,7 @@ import ScrollAnimation from '../components/ScrollAnimation';
 import UpgradeModal from '../components/UpgradeModal';
 import HostMeetupModal from '../components/HostMeetupModal';
 import HostExhibitModal from '../components/HostExhibitModal';
+import ProBadge from '../components/ProBadge';
 import styles from '../styles/Community.module.css';
 
 function CommunityPageContent() {
@@ -1070,7 +1071,7 @@ function CommunityPageContent() {
                         <Link key={member.id} href={`/artist/${member.slug || member.id}`} style={{ textDecoration: 'none' }}>
                           <div className={styles.memberItem}>
                             {member.avatar && member.avatar.startsWith('http') ? (
-                              <div className={styles.memberAvatarImage}>
+                              <div className={styles.memberAvatarImage} style={{ position: 'relative' }}>
                                 <Image
                                   src={member.avatar}
                                   alt={member.name}
@@ -1078,9 +1079,13 @@ function CommunityPageContent() {
                                   height={40}
                                   style={{ borderRadius: '50%', objectFit: 'cover' }}
                                 />
+                                {member.isPro && <ProBadge size={14} />}
                               </div>
                             ) : (
-                              <div className={styles.memberAvatar}>{member.initials}</div>
+                              <div className={styles.memberAvatar} style={{ position: 'relative' }}>
+                                {member.initials}
+                                {member.isPro && <ProBadge size={14} />}
+                              </div>
                             )}
                             <div className={styles.memberInfo}>
                               <p className={styles.memberName}>{member.name}</p>
@@ -1325,21 +1330,26 @@ function CommunityPageContent() {
                           
                           return (
                             <div key={post.id} className={styles.post}>
-                              <Link href={artistLink} style={{ textDecoration: 'none' }}>
-                                {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                                  <div className={styles.postAvatarImage}>
-                                    <Image
-                                      src={post.user_avatar}
-                                      alt="Profile"
-                                      width={48}
-                                      height={48}
-                                      className={styles.postAvatarImg}
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
-                                )}
-                              </Link>
+                              <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+                                <Link href={artistLink} style={{ textDecoration: 'none' }}>
+                                  {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                                    <div className={styles.postAvatarImage}>
+                                      <Image
+                                        src={post.user_avatar}
+                                        alt="Profile"
+                                        width={48}
+                                        height={48}
+                                        className={styles.postAvatarImg}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className={styles.postAvatar}>
+                                      {post.user_avatar || 'U'}
+                                    </div>
+                                  )}
+                                </Link>
+                                {post.user_is_pro && <ProBadge size={16} />}
+                              </div>
                               <div className={styles.postContent}>
                                 <div className={styles.postHeader}>
                                   <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -1496,21 +1506,26 @@ function CommunityPageContent() {
                   <div className={styles.postFeed}>
                     {/* Post Composer */}
                     <div className={styles.postComposer}>
-                      <Link href="/profile" style={{ textDecoration: 'none' }}>
-                        {userAvatar && userAvatar.startsWith('http') ? (
-                          <div className={styles.postAvatarImage}>
-                            <Image
-                              src={userAvatar}
-                              alt="Profile"
-                              width={48}
-                              height={48}
-                              className={styles.postAvatarImg}
-                            />
-                          </div>
-                        ) : (
-                          <div className={styles.postAvatar}>{userInitials}</div>
-                        )}
-                      </Link>
+                      <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+                        <Link href="/profile" style={{ textDecoration: 'none' }}>
+                          {userAvatar && userAvatar.startsWith('http') ? (
+                            <div className={styles.postAvatarImage}>
+                              <Image
+                                src={userAvatar}
+                                alt="Profile"
+                                width={48}
+                                height={48}
+                                className={styles.postAvatarImg}
+                              />
+                            </div>
+                          ) : (
+                            <div className={styles.postAvatar}>
+                              {userInitials}
+                            </div>
+                          )}
+                        </Link>
+                        {hasPaidMembership && <ProBadge size={16} />}
+                      </div>
                       <div className={styles.composerContent}>
                         <textarea
                           className={styles.composerTextarea}
@@ -1557,21 +1572,26 @@ function CommunityPageContent() {
                         
                         return (
                           <div key={post.id} className={styles.post}>
-                            <Link href={artistLink} style={{ textDecoration: 'none' }}>
-                              {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                                <div className={styles.postAvatarImage}>
-                                  <Image
-                                    src={post.user_avatar}
-                                    alt="Profile"
-                                    width={48}
-                                    height={48}
-                                    className={styles.postAvatarImg}
-                                  />
-                                </div>
-                              ) : (
-                                <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
-                              )}
-                            </Link>
+                            <div style={{ position: 'relative', width: '48px', height: '48px', flexShrink: 0 }}>
+                              <Link href={artistLink} style={{ textDecoration: 'none' }}>
+                                {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                                  <div className={styles.postAvatarImage}>
+                                    <Image
+                                      src={post.user_avatar}
+                                      alt="Profile"
+                                      width={48}
+                                      height={48}
+                                      className={styles.postAvatarImg}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className={styles.postAvatar}>
+                                    {post.user_avatar || 'U'}
+                                  </div>
+                                )}
+                              </Link>
+                              {post.user_is_pro && <ProBadge size={16} />}
+                            </div>
                             <div className={styles.postContent}>
                               <div className={styles.postHeader}>
                                 <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>

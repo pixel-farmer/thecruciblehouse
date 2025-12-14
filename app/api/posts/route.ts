@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('[posts GET] Missing Supabase environment variables:', {
@@ -113,7 +114,45 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ posts: data || [] });
+    // Get unique user IDs from posts
+    const userIds = [...new Set((data || []).map((post: any) => post.user_id))];
+    
+    // Fetch user metadata including membership status
+    // Use service role key for admin access if available
+    let userMembershipMap = new Map<string, boolean>();
+    
+    if (supabaseServiceKey && userIds.length > 0) {
+      try {
+        const supabaseAdmin = createClient(
+          supabaseUrl,
+          supabaseServiceKey,
+          { auth: { autoRefreshToken: false, persistSession: false } }
+        );
+        
+        const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers();
+        
+        if (usersData && !usersError) {
+          usersData.users.forEach((user) => {
+            const userMetadata = user.user_metadata || {};
+            const membershipStatus = userMetadata.membership_status;
+            const hasPaidMembership = userMetadata.has_paid_membership;
+            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+            userMembershipMap.set(user.id, isPro);
+          });
+        }
+      } catch (error) {
+        console.error('[posts GET] Error fetching user membership:', error);
+        // Continue without membership data if there's an error
+      }
+    }
+
+    // Add membership status to each post
+    const postsWithMembership = (data || []).map((post: any) => ({
+      ...post,
+      user_is_pro: userMembershipMap.get(post.user_id) || false,
+    }));
+
+    return NextResponse.json({ posts: postsWithMembership });
   } catch (error) {
     console.error('[posts GET] Exception:', error);
     return NextResponse.json(
