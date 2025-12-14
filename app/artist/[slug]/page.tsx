@@ -82,21 +82,53 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                 <h1 className={styles.sectionTitle} style={{ textAlign: 'left', marginBottom: '20px' }}>
                   {artist.name}
                 </h1>
-                <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)' }}>
-                  {artist.bio}
-                </p>
+                {artist.bio ? (
+                  <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)' }}>
+                    {artist.bio}
+                  </p>
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '150px',
+                    backgroundColor: '#e8e8e8',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-light)',
+                    fontSize: '0.95rem',
+                    fontFamily: 'var(--font-inter)'
+                  }}>
+                    No bio available
+                  </div>
+                )}
               </div>
-              {(artist.gallery_image_url || artist.avatar_url) && (
-                <div className={styles.aboutImage}>
+              <div className={styles.aboutImage}>
+                {artist.gallery_image_url || artist.avatar_url ? (
                   <Image
                     src={artist.gallery_image_url || artist.avatar_url}
                     alt={artist.name}
                     width={500}
                     height={500}
-                    style={{ width: '100%', height: '500px', objectFit: 'cover' }}
+                    style={{ width: '100%', height: '500px', objectFit: 'cover', borderRadius: '8px' }}
                   />
-                </div>
-              )}
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '500px',
+                    backgroundColor: '#e8e8e8',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-light)',
+                    fontSize: '1.1rem',
+                    fontFamily: 'var(--font-inter)'
+                  }}>
+                    No image available
+                  </div>
+                )}
+              </div>
             </div>
           </ScrollAnimation>
         </div>
@@ -138,8 +170,15 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
               ))}
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-light)' }}>
-              No artwork available.
+            <div className={styles.galleryGrid}>
+              {/* Show 6 placeholder boxes when no artwork */}
+              {[1, 2, 3, 4, 5, 6].map((index) => (
+                <div key={index} className={styles.galleryItem} style={{ cursor: 'default' }}>
+                  <div className={styles.galleryImagePlaceholder}>
+                    <span style={{ opacity: 0.5 }}>No artwork</span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

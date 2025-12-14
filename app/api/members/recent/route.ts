@@ -154,12 +154,22 @@ export async function GET(request: NextRequest) {
           activityText = `Active ${weeks} ${weeks === 1 ? 'week' : 'weeks'} ago`;
         }
 
+        // Generate slug from handle or name
+        const handle = user.user_metadata?.handle || null;
+        const slug = handle 
+          ? handle.replace('@', '').toLowerCase()
+          : displayName
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)/g, '');
+
         return {
           id: user.id,
           name: displayName,
           avatar: avatarUrl,
           initials,
           activity: activityText,
+          slug,
         };
       });
 

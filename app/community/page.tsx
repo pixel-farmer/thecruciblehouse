@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import UpgradeModal from '../components/UpgradeModal';
 import HostMeetupModal from '../components/HostMeetupModal';
+import HostExhibitModal from '../components/HostExhibitModal';
 import styles from '../styles/Community.module.css';
 
 export default function CommunityPage() {
@@ -31,9 +32,12 @@ export default function CommunityPage() {
   const [membersLoading, setMembersLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showHostMeetupModal, setShowHostMeetupModal] = useState(false);
+  const [showHostExhibitModal, setShowHostExhibitModal] = useState(false);
   const [meetups, setMeetups] = useState<any[]>([]);
   const [meetupsLoading, setMeetupsLoading] = useState(true);
   const [selectedMeetup, setSelectedMeetup] = useState<any | null>(null);
+  const [exhibitions, setExhibitions] = useState<any[]>([]);
+  const [exhibitionsLoading, setExhibitionsLoading] = useState(true);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -586,6 +590,7 @@ export default function CommunityPage() {
     fetchPosts();
     fetchRecentMembers();
     fetchMeetups();
+    fetchExhibitions();
   }, []);
 
   const fetchMeetups = async () => {
@@ -605,6 +610,26 @@ export default function CommunityPage() {
       setMeetups([]);
     } finally {
       setMeetupsLoading(false);
+    }
+  };
+
+  const fetchExhibitions = async () => {
+    try {
+      setExhibitionsLoading(true);
+      const response = await fetch('/api/exhibitions');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setExhibitions(data.exhibitions || []);
+      } else {
+        console.error('Failed to fetch exhibitions');
+        setExhibitions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching exhibitions:', error);
+      setExhibitions([]);
+    } finally {
+      setExhibitionsLoading(false);
     }
   };
 
@@ -752,6 +777,19 @@ export default function CommunityPage() {
     return date.toLocaleDateString();
   };
 
+  const createUserSlug = (handle: string | null, name: string | null): string => {
+    if (handle) {
+      return handle.replace('@', '').toLowerCase();
+    }
+    if (name) {
+      return name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '');
+    }
+    return '';
+  };
+
   const handleUpgradeClick = () => {
     if (!isLoggedIn || !userId) {
       alert('Please log in to upgrade your membership.');
@@ -800,7 +838,7 @@ export default function CommunityPage() {
                   ) : (
                     <div className={styles.memberList}>
                       {recentMembers.map((member) => (
-                        <Link key={member.id} href="/profile" style={{ textDecoration: 'none' }}>
+                        <Link key={member.id} href={`/artist/${member.slug || member.id}`} style={{ textDecoration: 'none' }}>
                           <div className={styles.memberItem}>
                             {member.avatar && member.avatar.startsWith('http') ? (
                               <div className={styles.memberAvatarImage}>
@@ -1043,35 +1081,40 @@ export default function CommunityPage() {
                         No posts yet. Be the first to post!
                       </div>
                     ) : (
-                      posts.map((post) => (
-                        <div key={post.id} className={styles.post}>
-                          <Link href="/profile" style={{ textDecoration: 'none' }}>
-                            {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                              <div className={styles.postAvatarImage}>
-                                <Image
-                                  src={post.user_avatar}
-                                  alt="Profile"
-                                  width={48}
-                                  height={48}
-                                  className={styles.postAvatarImg}
-                                />
+                      posts.map((post) => {
+                        const userSlug = createUserSlug(post.user_handle, post.user_name);
+                        const artistLink = userSlug ? `/artist/${userSlug}` : `/profile`;
+                        
+                        return (
+                          <div key={post.id} className={styles.post}>
+                            <Link href={artistLink} style={{ textDecoration: 'none' }}>
+                              {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                                <div className={styles.postAvatarImage}>
+                                  <Image
+                                    src={post.user_avatar}
+                                    alt="Profile"
+                                    width={48}
+                                    height={48}
+                                    className={styles.postAvatarImg}
+                                  />
+                                </div>
+                              ) : (
+                                <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                              )}
+                            </Link>
+                            <div className={styles.postContent}>
+                              <div className={styles.postHeader}>
+                                <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                  <span className={styles.postName}>{post.user_name || 'User'}</span>
+                                </Link>
+                                <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                                <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
                               </div>
-                            ) : (
-                              <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
-                            )}
-                          </Link>
-                          <div className={styles.postContent}>
-                            <div className={styles.postHeader}>
-                              <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                <span className={styles.postName}>{post.user_name || 'User'}</span>
-                              </Link>
-                              <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
-                              <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                              <p className={styles.postText}>{post.content}</p>
                             </div>
-                            <p className={styles.postText}>{post.content}</p>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 )}
@@ -1287,23 +1330,108 @@ export default function CommunityPage() {
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Nearby Exhibitions</h3>
-                  <div className={styles.eventList}>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Portrait Workshop</h5>
-                      <p className={styles.eventDate}>March 20, 2025</p>
-                      <p className={styles.eventLocation}>Studio Downtown</p>
+                  {exhibitionsLoading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                      Loading...
                     </div>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Digital Art Meetup</h5>
-                      <p className={styles.eventDate}>March 25, 2025</p>
-                      <p className={styles.eventLocation}>Community Center</p>
+                  ) : exhibitions.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem' }}>
+                      No exhibitions listed. Be the first to post one!
                     </div>
-                    <div className={styles.eventItem}>
-                      <h5 className={styles.eventName}>Business Networking</h5>
-                      <p className={styles.eventDate}>April 1, 2025</p>
-                      <p className={styles.eventLocation}>Art Gallery</p>
+                  ) : (
+                    <div className={styles.eventList}>
+                      {exhibitions.map((exhibition) => {
+                        const startDate = new Date(exhibition.start_date);
+                        const formattedStartDate = startDate.toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        });
+                        const endDate = exhibition.end_date ? new Date(exhibition.end_date) : null;
+                        const formattedEndDate = endDate ? endDate.toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        }) : null;
+                        
+                        return (
+                          <div 
+                            key={exhibition.id} 
+                            className={styles.eventItem}
+                            style={{
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'transparent';
+                            }}
+                          >
+                            <h5 className={styles.eventName}>{exhibition.title}</h5>
+                            <p className={styles.eventDate}>
+                              {formattedStartDate}
+                              {formattedEndDate && ` - ${formattedEndDate}`}
+                            </p>
+                            <p className={styles.eventLocation}>{exhibition.location}</p>
+                          </div>
+                        );
+                      })}
                     </div>
-                  </div>
+                  )}
+                  <button
+                    className={styles.hostMeetupButton}
+                    onClick={async () => {
+                      if (!isLoggedIn) {
+                        alert('Please log in to post an exhibition.');
+                        return;
+                      }
+                      
+                      // Check membership status directly from session
+                      const { data: { session } } = await supabase.auth.getSession();
+                      if (session?.user) {
+                        const userMetadata = session.user.user_metadata;
+                        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+                        const isPro = !!membershipStatus;
+                        
+                        if (!isPro) {
+                          // Show upgrade modal for non-pro users
+                          setShowUpgradeModal(true);
+                        } else {
+                          // Pro users can post exhibitions
+                          setShowHostExhibitModal(true);
+                        }
+                      } else {
+                        alert('Please log in to post an exhibition.');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 20px',
+                      marginTop: '15px',
+                      fontFamily: 'var(--font-inter)',
+                      fontSize: '0.95rem',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      borderRadius: '20px',
+                      backgroundColor: '#ff6622',
+                      color: 'white',
+                      outline: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#e55a1a';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = '#ff6622';
+                    }}
+                  >
+                    Post an Exhibit
+                  </button>
                 </div>
               </ScrollAnimation>
             </div>
@@ -1395,6 +1523,16 @@ export default function CommunityPage() {
         onSuccess={() => {
           // Refresh meetups list when a new one is created
           fetchMeetups();
+        }}
+      />
+
+      {/* Host Exhibit Modal */}
+      <HostExhibitModal
+        isOpen={showHostExhibitModal}
+        onClose={() => setShowHostExhibitModal(false)}
+        onSuccess={() => {
+          // Refresh exhibitions list when a new one is created
+          fetchExhibitions();
         }}
       />
     </motion.div>

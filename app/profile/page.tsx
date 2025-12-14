@@ -16,7 +16,7 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups' | 'exhibits'>('profile');
   const [userCommissions, setUserCommissions] = useState<any[]>([]);
   const [commissionsLoading, setCommissionsLoading] = useState(true);
   const [userArtwork, setUserArtwork] = useState<any[]>([]);
@@ -24,6 +24,8 @@ export default function ProfilePage() {
   const [galleryImageId, setGalleryImageId] = useState<string | null>(null);
   const [userMeetups, setUserMeetups] = useState<any[]>([]);
   const [meetupsLoading, setMeetupsLoading] = useState(true);
+  const [userExhibitions, setUserExhibitions] = useState<any[]>([]);
+  const [exhibitionsLoading, setExhibitionsLoading] = useState(true);
 
   useEffect(() => {
     const checkAuthAndLoadProfile = async () => {
@@ -43,6 +45,7 @@ export default function ProfilePage() {
         await fetchUserCommissions(session.user.id);
         await fetchUserArtwork(session.user.id);
         await fetchUserMeetups(session.user.id);
+        await fetchUserExhibitions(session.user.id);
       } catch (error) {
         console.error('Error checking auth:', error);
         router.push('/login');
@@ -144,6 +147,23 @@ export default function ProfilePage() {
       console.error('Error fetching user meetups:', error);
     } finally {
       setMeetupsLoading(false);
+    }
+  };
+
+  const fetchUserExhibitions = async (userId: string) => {
+    try {
+      setExhibitionsLoading(true);
+      const response = await fetch('/api/exhibitions');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter exhibitions to only show current user's exhibitions (host)
+        const myExhibitions = (data.exhibitions || []).filter((exhibition: any) => exhibition.host_id === userId);
+        setUserExhibitions(myExhibitions);
+      }
+    } catch (error) {
+      console.error('Error fetching user exhibitions:', error);
+    } finally {
+      setExhibitionsLoading(false);
     }
   };
 
@@ -281,6 +301,31 @@ export default function ProfilePage() {
     } catch (error) {
       console.error('Error deleting meetup:', error);
       alert('Failed to delete meetup. Please try again.');
+    }
+  };
+
+  const handleDeleteExhibition = async (exhibitionId: string) => {
+    if (!confirm('Are you sure you want to delete this exhibition?')) {
+      return;
+    }
+
+    try {
+      // Use Supabase client directly for deletion (RLS will handle permissions)
+      const { error } = await supabase
+        .from('exhibitions')
+        .delete()
+        .eq('id', exhibitionId);
+
+      if (error) {
+        console.error('Error deleting exhibition:', error);
+        alert(error.message || 'Failed to delete exhibition');
+      } else {
+        // Remove the exhibition from the local state
+        setUserExhibitions(userExhibitions.filter((exhibition: any) => exhibition.id !== exhibitionId));
+      }
+    } catch (error) {
+      console.error('Error deleting exhibition:', error);
+      alert('Failed to delete exhibition. Please try again.');
     }
   };
 
@@ -466,6 +511,12 @@ export default function ProfilePage() {
                     onClick={() => setActiveTab('meetups')}
                   >
                     Meetups
+                  </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'exhibits' ? styles.tabButtonActive : ''}`}
+                    onClick={() => setActiveTab('exhibits')}
+                  >
+                    Exhibits
                   </button>
                 </div>
 
@@ -805,6 +856,83 @@ export default function ProfilePage() {
                                     onClick={() => handleDeleteMeetup(meetup.id)}
                                     className={styles.deleteButton}
                                     title="Delete meetup"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Exhibits Tab Content */}
+                {activeTab === 'exhibits' && (
+                  <div className={styles.postsSection}>
+                    <h4 className={styles.postsTitle}>My Exhibitions ({userExhibitions.length})</h4>
+                    
+                    {exhibitionsLoading ? (
+                      <div className={styles.loading}>Loading exhibitions...</div>
+                    ) : userExhibitions.length === 0 ? (
+                      <div className={styles.emptyState}>
+                        <p>You haven't posted any exhibitions yet.</p>
+                        <a href="/community" className={styles.linkToCommunity}>
+                          Go to Community →
+                        </a>
+                      </div>
+                    ) : (
+                      <div className={styles.postsList}>
+                        {userExhibitions.map((exhibition: any) => {
+                          const startDate = new Date(exhibition.start_date);
+                          const formattedStartDate = startDate.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          });
+                          const endDate = exhibition.end_date ? new Date(exhibition.end_date) : null;
+                          const formattedEndDate = endDate ? endDate.toLocaleDateString('en-US', {
+                            month: 'long',
+                            day: 'numeric',
+                            year: 'numeric',
+                          }) : null;
+                          
+                          return (
+                            <div key={exhibition.id} className={styles.post}>
+                              <div className={styles.postContent} style={{ width: '100%' }}>
+                                <div className={styles.postHeader}>
+                                  <span className={styles.postName}>{exhibition.title}</span>
+                                  <span className={styles.postTime}>{formatTimeAgo(exhibition.created_at)}</span>
+                                </div>
+                                <p className={styles.postText}>{exhibition.description}</p>
+                                <div style={{ 
+                                  marginTop: '8px', 
+                                  marginBottom: '8px',
+                                  fontSize: '0.9rem',
+                                  color: 'var(--text-light)',
+                                  fontFamily: 'var(--font-inter)',
+                                }}>
+                                  <div style={{ marginBottom: '4px' }}>
+                                    <strong>Start Date:</strong> {formattedStartDate}
+                                    {formattedEndDate && (
+                                      <>
+                                        <br />
+                                        <strong>End Date:</strong> {formattedEndDate}
+                                      </>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <strong>Location:</strong> {exhibition.location}
+                                  </div>
+                                </div>
+                                <div className={styles.postFooter}>
+                                  <p className={styles.postDate}>{formatDate(exhibition.created_at)}</p>
+                                  <button
+                                    onClick={() => handleDeleteExhibition(exhibition.id)}
+                                    className={styles.deleteButton}
+                                    title="Delete exhibition"
                                   >
                                     Delete
                                   </button>
