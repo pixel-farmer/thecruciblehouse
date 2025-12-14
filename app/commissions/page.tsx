@@ -39,6 +39,7 @@ export default function CommissionsPage() {
   const [hasProMembership, setHasProMembership] = useState(false);
   const [recentMembers, setRecentMembers] = useState<any[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
+  const [showSignInMessage, setShowSignInMessage] = useState(false);
 
   const categories = [
     'All',
@@ -103,11 +104,20 @@ export default function CommissionsPage() {
     }
   };
 
-  const handleApplyClick = (commission: Commission) => {
+  const handleApplyClick = async (commission: Commission) => {
+    // First check if user is signed in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.user) {
+      setShowSignInMessage(true);
+      return;
+    }
+    
+    // Check if user is pro
     if (!hasProMembership) {
       router.push('/pricing');
       return;
     }
+    
     window.location.href = `mailto:${commission.contact_email}?subject=Application for ${commission.title}`;
   };
 
@@ -387,6 +397,104 @@ export default function CommissionsPage() {
           </div>
         </div>
       </section>
+
+      {/* Sign In Message Modal */}
+      {showSignInMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setShowSignInMessage(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '90%',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '1.25rem',
+              fontWeight: 600,
+              marginBottom: '1rem',
+              color: '#333',
+            }}>
+              Sign In Required
+            </h3>
+            <p style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.95rem',
+              color: '#666',
+              marginBottom: '1.5rem',
+            }}>
+              Please sign in to use this feature.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowSignInMessage(false)}
+                style={{
+                  padding: '10px 20px',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  backgroundColor: 'white',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                Cancel
+              </button>
+              <Link
+                href="/login"
+                style={{
+                  padding: '10px 20px',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  backgroundColor: '#ff6622',
+                  color: 'white',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  display: 'inline-block',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e55a1a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff6622';
+                }}
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -14,9 +14,11 @@ import styles from '../styles/Community.module.css';
 
 function CommunityPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPaidMembership, setHasPaidMembership] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSignInMessage, setShowSignInMessage] = useState(false);
   const [postText, setPostText] = useState('');
   const [userInitials, setUserInitials] = useState('U');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
@@ -334,14 +336,22 @@ function CommunityPageContent() {
         if (upgradeBtn) {
           upgradeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            // Check session directly instead of using closure values
+            // Check session directly
             const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-              // Update userId state if needed, then open modal
+            if (!session || !session.user) {
+              setShowSignInMessage(true);
+              return;
+            }
+            // If logged in but not pro, redirect to pricing
+            const userMetadata = session.user.user_metadata;
+            const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+            const isPro = !!membershipStatus;
+            if (!isPro) {
+              router.push('/pricing');
+            } else {
+              // Shouldn't reach here if pro, but handle anyway
               setUserId(session.user.id);
               setShowUpgradeModal(true);
-            } else {
-              alert('Please log in to upgrade your membership.');
             }
           });
         }
@@ -519,15 +529,25 @@ function CommunityPageContent() {
         if (upgradeBtn) {
           upgradeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            // Check session directly instead of using closure values
+            // Check session directly
             const { data: { session } } = await supabase.auth.getSession();
-            if (session && session.user) {
-              // Update userId state if needed, then open modal
+            if (!session || !session.user) {
+              setShowSignInMessage(true);
+              setIsMapFullscreen(false);
+              return;
+            }
+            // If logged in but not pro, redirect to pricing
+            const userMetadata = session.user.user_metadata;
+            const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+            const isPro = !!membershipStatus;
+            if (!isPro) {
+              setIsMapFullscreen(false);
+              router.push('/pricing');
+            } else {
+              // Shouldn't reach here if pro, but handle anyway
               setUserId(session.user.id);
               setIsMapFullscreen(false);
               setShowUpgradeModal(true);
-            } else {
-              alert('Please log in to upgrade your membership.');
             }
           });
         }
@@ -976,9 +996,32 @@ function CommunityPageContent() {
     return '';
   };
 
+  // Helper function to check if user can access pro features
+  const checkProAccess = async (): Promise<boolean> => {
+    // Check if user is signed in
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session || !session.user) {
+      setShowSignInMessage(true);
+      return false;
+    }
+    
+    // Check if user is pro
+    const userMetadata = session.user.user_metadata;
+    const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
+    const isPro = !!membershipStatus;
+    
+    if (!isPro) {
+      // Redirect to pricing page if logged in but not pro
+      router.push('/pricing');
+      return false;
+    }
+    
+    return true;
+  };
+
   const handleUpgradeClick = () => {
     if (!isLoggedIn || !userId) {
-      alert('Please log in to upgrade your membership.');
+      setShowSignInMessage(true);
       return;
     }
     setShowUpgradeModal(true);
@@ -1705,27 +1748,9 @@ function CommunityPageContent() {
                   <button
                     className={styles.hostMeetupButton}
                     onClick={async () => {
-                      if (!isLoggedIn) {
-                        alert('Please log in to host a meetup.');
-                        return;
-                      }
-                      
-                      // Check membership status directly from session
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (session?.user) {
-                        const userMetadata = session.user.user_metadata;
-                        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-                        const isPro = !!membershipStatus;
-                        
-                        if (!isPro) {
-                          // Show upgrade modal for non-pro users
-                          setShowUpgradeModal(true);
-                        } else {
-                          // Pro users can create meetups
-                          setShowHostMeetupModal(true);
-                        }
-                      } else {
-                        alert('Please log in to host a meetup.');
+                      const hasAccess = await checkProAccess();
+                      if (hasAccess) {
+                        setShowHostMeetupModal(true);
                       }
                     }}
                     style={{
@@ -1813,27 +1838,9 @@ function CommunityPageContent() {
                   <button
                     className={styles.hostMeetupButton}
                     onClick={async () => {
-                      if (!isLoggedIn) {
-                        alert('Please log in to post an exhibition.');
-                        return;
-                      }
-                      
-                      // Check membership status directly from session
-                      const { data: { session } } = await supabase.auth.getSession();
-                      if (session?.user) {
-                        const userMetadata = session.user.user_metadata;
-                        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-                        const isPro = !!membershipStatus;
-                        
-                        if (!isPro) {
-                          // Show upgrade modal for non-pro users
-                          setShowUpgradeModal(true);
-                        } else {
-                          // Pro users can post exhibitions
-                          setShowHostExhibitModal(true);
-                        }
-                      } else {
-                        alert('Please log in to post an exhibition.');
+                      const hasAccess = await checkProAccess();
+                      if (hasAccess) {
+                        setShowHostExhibitModal(true);
                       }
                     }}
                     style={{
@@ -1965,6 +1972,104 @@ function CommunityPageContent() {
           fetchExhibitions();
         }}
       />
+
+      {/* Sign In Message Modal */}
+      {showSignInMessage && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setShowSignInMessage(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'white',
+              padding: '2rem',
+              borderRadius: '12px',
+              maxWidth: '400px',
+              width: '90%',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '1.25rem',
+              fontWeight: 600,
+              marginBottom: '1rem',
+              color: '#333',
+            }}>
+              Sign In Required
+            </h3>
+            <p style={{
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.95rem',
+              color: '#666',
+              marginBottom: '1.5rem',
+            }}>
+              Please sign in to use this feature.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button
+                onClick={() => setShowSignInMessage(false)}
+                style={{
+                  padding: '10px 20px',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  backgroundColor: 'white',
+                  color: '#333',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f5f5f5';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                Cancel
+              </button>
+              <Link
+                href="/login"
+                style={{
+                  padding: '10px 20px',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.95rem',
+                  fontWeight: 600,
+                  borderRadius: '8px',
+                  backgroundColor: '#ff6622',
+                  color: 'white',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s ease',
+                  display: 'inline-block',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#e55a1a';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#ff6622';
+                }}
+              >
+                Sign In
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
