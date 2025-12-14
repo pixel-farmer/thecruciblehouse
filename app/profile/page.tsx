@@ -861,35 +861,77 @@ export default function ProfilePage() {
                     ) : userCommissions.length === 0 ? (
                       <div className={styles.emptyState}>
                         <p>No commissions posted yet.</p>
-                        <Link
-                          href="/commissions/post-job"
-                          style={{
-                            fontSize: '0.95rem',
-                            fontWeight: 600,
-                            textTransform: 'uppercase',
-                            letterSpacing: '1px',
-                            fontFamily: 'var(--font-inter)',
-                            borderRadius: '20px',
-                            backgroundColor: '#ff6622',
-                            color: 'white',
-                            outline: 'none',
-                            border: 'none',
-                            textDecoration: 'none',
-                            transition: 'background-color 0.2s ease',
-                            padding: '8px 20px',
-                            cursor: 'pointer',
-                            marginTop: '16px',
-                            display: 'inline-block',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e55a1a';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ff6622';
-                          }}
-                        >
-                          POST A JOB
-                        </Link>
+                        {(() => {
+                          const userMetadata = user?.user_metadata || {};
+                          const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
+                          const isPro = !!membershipStatus;
+                          
+                          if (!isPro) {
+                            return (
+                              <Link
+                                href="/pricing"
+                                style={{
+                                  fontSize: '0.95rem',
+                                  fontWeight: 600,
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '1px',
+                                  fontFamily: 'var(--font-inter)',
+                                  borderRadius: '20px',
+                                  backgroundColor: '#ff6622',
+                                  color: 'white',
+                                  outline: 'none',
+                                  border: 'none',
+                                  textDecoration: 'none',
+                                  transition: 'background-color 0.2s ease',
+                                  padding: '8px 20px',
+                                  cursor: 'pointer',
+                                  marginTop: '16px',
+                                  display: 'inline-block',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#e55a1a';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#ff6622';
+                                }}
+                              >
+                                UPGRADE TO POST
+                              </Link>
+                            );
+                          }
+                          
+                          return (
+                            <Link
+                              href="/commissions/post-job"
+                              style={{
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px',
+                                fontFamily: 'var(--font-inter)',
+                                borderRadius: '20px',
+                                backgroundColor: '#ff6622',
+                                color: 'white',
+                                outline: 'none',
+                                border: 'none',
+                                textDecoration: 'none',
+                                transition: 'background-color 0.2s ease',
+                                padding: '8px 20px',
+                                cursor: 'pointer',
+                                marginTop: '16px',
+                                display: 'inline-block',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = '#e55a1a';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = '#ff6622';
+                              }}
+                            >
+                              POST A JOB
+                            </Link>
+                          );
+                        })()}
                       </div>
                     ) : (
                       <div className={styles.postsList}>

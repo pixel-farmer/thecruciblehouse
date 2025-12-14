@@ -139,6 +139,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify user has pro membership
+    const userMetadata = user.user_metadata || {};
+    const membershipStatus = userMetadata.membership_status;
+    const hasPaidMembership = userMetadata.has_paid_membership;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+
+    if (!isPro) {
+      return NextResponse.json(
+        { error: 'Pro membership required to post commission jobs. Please upgrade your membership.' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
     const {
       title,

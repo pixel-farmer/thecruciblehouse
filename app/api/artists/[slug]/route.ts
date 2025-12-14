@@ -111,11 +111,16 @@ export async function GET(
     const hasPaidMembership = userMetadata.has_paid_membership;
     const isPro = membershipStatus === 'active' || hasPaidMembership === true;
 
+    const discipline = user.user_metadata?.discipline || null;
+    const portfolioUrl = user.user_metadata?.portfolio_url || null;
+
     const artist = {
       id: user.id,
       slug,
       name: displayName,
       bio: user.user_metadata?.bio || null,
+      discipline: discipline,
+      portfolio_url: portfolioUrl,
       avatar_url: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       gallery_image_url: galleryImageUrl,
       artwork: artworkData || [],

@@ -118,7 +118,17 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                   }}>
                     {artist.name}
                   </h1>
-                  <p style={{ 
+                  {artist.discipline && (
+                    <p style={{ 
+                      fontSize: '0.95rem', 
+                      color: 'var(--text-light)', 
+                      marginBottom: '5px',
+                      fontFamily: 'var(--font-inter)'
+                    }}>
+                      {artist.discipline}
+                    </p>
+                  )}
+                  <div style={{ 
                     fontSize: '0.95rem', 
                     color: 'var(--text-light)', 
                     marginBottom: '15px',
@@ -137,13 +147,13 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                         width: '14px',
                         height: '14px'
                       }}>
-                        <div style={{
+                        <span style={{
                           position: 'relative',
                           width: '14px',
                           height: '14px',
                           borderRadius: '50%',
                           backgroundColor: '#ff6622',
-                          display: 'flex',
+                          display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           border: '1.5px solid white',
@@ -161,10 +171,10 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                           >
                             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                           </svg>
-                        </div>
+                        </span>
                       </span>
                     )}
-                  </p>
+                  </div>
                   <div style={{
                     width: '60px',
                     height: '3px',
@@ -173,9 +183,56 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                   }}></div>
                 </div>
                 {artist.bio ? (
-                  <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)' }}>
-                    {artist.bio}
-                  </p>
+                  <>
+                    <p style={{ fontSize: '1.1rem', lineHeight: '1.8', color: 'var(--text-light)', marginBottom: artist.portfolio_url ? '16px' : '0' }}>
+                      {artist.bio}
+                    </p>
+                    {artist.portfolio_url && (
+                      <a 
+                        href={artist.portfolio_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'inline-block',
+                          color: '#ff6622',
+                          fontSize: '1rem',
+                          fontFamily: 'var(--font-inter)',
+                          textDecoration: 'none',
+                          transition: 'text-decoration 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.textDecoration = 'underline';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.textDecoration = 'none';
+                        }}
+                      >
+                        {artist.portfolio_url.replace(/^https?:\/\//i, '')}
+                      </a>
+                    )}
+                  </>
+                ) : artist.portfolio_url ? (
+                  <a 
+                    href={artist.portfolio_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-block',
+                      color: '#ff6622',
+                      fontSize: '1rem',
+                      fontFamily: 'var(--font-inter)',
+                      textDecoration: 'none',
+                      transition: 'text-decoration 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.textDecoration = 'underline';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.textDecoration = 'none';
+                    }}
+                  >
+                    {artist.portfolio_url.replace(/^https?:\/\//i, '')}
+                  </a>
                 ) : (
                   <div style={{
                     width: '100%',

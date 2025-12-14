@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,37 @@ export default function PostJobPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+
+  // Check membership on page load
+  useEffect(() => {
+    const checkMembership = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session || !session.user) {
+          router.push('/login');
+          return;
+        }
+
+        const userMetadata = session.user.user_metadata || {};
+        const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
+        const isPro = !!membershipStatus;
+
+        if (!isPro) {
+          router.push('/pricing');
+          return;
+        }
+
+        setCheckingAccess(false);
+      } catch (error) {
+        console.error('Error checking membership:', error);
+        router.push('/pricing');
+      }
+    };
+
+    checkMembership();
+  }, [router]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -97,6 +128,14 @@ export default function PostJobPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (checkingAccess) {
+    return (
+      <div style={{ paddingTop: '120px', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+        Loading...
+      </div>
+    );
+  }
 
   return (
     <motion.div
