@@ -16,7 +16,10 @@ export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups' | 'exhibits'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups' | 'exhibits' | 'subscription'>('profile');
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [subscriptionActionLoading, setSubscriptionActionLoading] = useState(false);
   const [userCommissions, setUserCommissions] = useState<any[]>([]);
   const [commissionsLoading, setCommissionsLoading] = useState(true);
   const [userArtwork, setUserArtwork] = useState<any[]>([]);
@@ -74,6 +77,128 @@ export default function ProfilePage() {
       }
     } catch (error) {
       console.error('Error refreshing user:', error);
+    }
+  };
+
+  const fetchSubscriptionStatus = async () => {
+    try {
+      setSubscriptionLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/subscription/manage', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionStatus(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your current billing period.')) {
+      return;
+    }
+
+    setSubscriptionActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/subscription/manage', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        await fetchSubscriptionStatus();
+        await refreshUser();
+        alert('Your subscription will be cancelled at the end of your current billing period.');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to cancel subscription');
+      }
+    } catch (error) {
+      console.error('Error cancelling subscription:', error);
+      alert('An error occurred while cancelling your subscription');
+    } finally {
+      setSubscriptionActionLoading(false);
+    }
+  };
+
+  const handlePauseSubscription = async () => {
+    if (!confirm('Are you sure you want to pause your subscription? You will retain access until the end of your current billing period, then it will be paused.')) {
+      return;
+    }
+
+    setSubscriptionActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/subscription/manage', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'pause' }),
+      });
+
+      if (response.ok) {
+        await fetchSubscriptionStatus();
+        await refreshUser();
+        alert('Your subscription will be paused at the end of your current billing period.');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to pause subscription');
+      }
+    } catch (error) {
+      console.error('Error pausing subscription:', error);
+      alert('An error occurred while pausing your subscription');
+    } finally {
+      setSubscriptionActionLoading(false);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setSubscriptionActionLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/subscription/manage', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ action: 'resume' }),
+      });
+
+      if (response.ok) {
+        await fetchSubscriptionStatus();
+        await refreshUser();
+        alert('Your subscription has been resumed.');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to resume subscription');
+      }
+    } catch (error) {
+      console.error('Error resuming subscription:', error);
+      alert('An error occurred while resuming your subscription');
+    } finally {
+      setSubscriptionActionLoading(false);
     }
   };
 
@@ -518,6 +643,15 @@ export default function ProfilePage() {
                   >
                     Exhibits
                   </button>
+                  <button
+                    className={`${styles.tabButton} ${activeTab === 'subscription' ? styles.tabButtonActive : ''}`}
+                    onClick={() => {
+                      setActiveTab('subscription');
+                      fetchSubscriptionStatus();
+                    }}
+                  >
+                    Subscription
+                  </button>
                 </div>
 
                 {/* Profile Tab Content */}
@@ -945,6 +1079,186 @@ export default function ProfilePage() {
                     )}
                   </div>
                 )}
+
+                {/* Subscription Tab Content */}
+                {activeTab === 'subscription' && (() => {
+                  // Check membership status from user metadata as fallback
+                  const userMetadata = user?.user_metadata || {};
+                  const membershipStatus = userMetadata.membership_status;
+                  const hasPaidMembership = userMetadata.has_paid_membership;
+                  const hasActiveMembership = membershipStatus === 'active' || hasPaidMembership === true;
+                  const hasSubscription = subscriptionStatus?.hasSubscription || hasActiveMembership;
+                  
+                  return (
+                    <div className={styles.postsSection}>
+                      {subscriptionLoading ? (
+                        <div className={styles.loading}>Loading subscription status...</div>
+                      ) : !hasSubscription ? (
+                      <div className={styles.emptyState}>
+                        <p>You don't have an active subscription.</p>
+                        <Link
+                          href="/pricing"
+                          style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            fontFamily: 'var(--font-inter)',
+                            borderRadius: '20px',
+                            backgroundColor: '#ff6622',
+                            color: 'white',
+                            outline: 'none',
+                            border: 'none',
+                            textDecoration: 'none',
+                            transition: 'background-color 0.2s ease',
+                            padding: '8px 20px',
+                            cursor: 'pointer',
+                            marginTop: '16px',
+                            display: 'inline-block',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#e55a1a';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#ff6622';
+                          }}
+                        >
+                          UPGRADE TO PRO
+                        </Link>
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding: '2rem',
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        border: '1px solid #eee',
+                      }}>
+                        <div style={{ marginBottom: '2rem' }}>
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '1rem',
+                          }}>
+                            <div>
+                              <h5 style={{
+                                fontFamily: 'var(--font-inter)',
+                                fontSize: '1.2rem',
+                                fontWeight: 600,
+                                color: 'var(--text-dark)',
+                                margin: '0 0 0.5rem 0',
+                              }}>
+                                Pro Membership
+                              </h5>
+                              <p style={{
+                                fontFamily: 'var(--font-inter)',
+                                fontSize: '1rem',
+                                color: 'var(--text-light)',
+                                margin: '0 0 0.75rem 0',
+                              }}>
+                                $8/month
+                              </p>
+                              <button
+                                onClick={handleCancelSubscription}
+                                disabled={subscriptionActionLoading || !hasActiveMembership}
+                                style={{
+                                  padding: '0.5rem 1rem',
+                                  borderRadius: '6px',
+                                  backgroundColor: 'transparent',
+                                  color: '#ef4444',
+                                  border: '1px solid #ef4444',
+                                  fontFamily: 'var(--font-inter)',
+                                  fontSize: '0.875rem',
+                                  fontWeight: 500,
+                                  cursor: (subscriptionActionLoading || !hasActiveMembership) ? 'not-allowed' : 'pointer',
+                                  opacity: (subscriptionActionLoading || !hasActiveMembership) ? 0.5 : 1,
+                                  transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!subscriptionActionLoading && hasActiveMembership) {
+                                    e.currentTarget.style.backgroundColor = '#ef4444';
+                                    e.currentTarget.style.color = 'white';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!subscriptionActionLoading && hasActiveMembership) {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '#ef4444';
+                                  }
+                                }}
+                              >
+                                {subscriptionActionLoading ? 'Processing...' : 'Cancel Subscription'}
+                              </button>
+                            </div>
+                            <div style={{
+                              padding: '0.5rem 1rem',
+                              borderRadius: '20px',
+                              backgroundColor: (subscriptionStatus.subscription?.status === 'active' || hasActiveMembership) ? '#10b981' : '#f59e0b',
+                              color: 'white',
+                              fontFamily: 'var(--font-inter)',
+                              fontSize: '0.85rem',
+                              fontWeight: 600,
+                              textTransform: 'uppercase',
+                            }}>
+                              {(subscriptionStatus.subscription?.status === 'active' || hasActiveMembership) ? 'Active' : (subscriptionStatus.subscription?.status || 'Active')}
+                            </div>
+                          </div>
+
+                          {subscriptionStatus.subscription?.current_period_end && (
+                            <p style={{
+                              fontFamily: 'var(--font-inter)',
+                              fontSize: '0.9rem',
+                              color: 'var(--text-light)',
+                              margin: '0.5rem 0',
+                            }}>
+                              {subscriptionStatus.subscription.cancel_at_period_end 
+                                ? `Subscription will ${subscriptionStatus.subscription.cancel_at ? 'end' : 'be cancelled'} on ${new Date(subscriptionStatus.subscription.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                                : `Next billing date: ${new Date(subscriptionStatus.subscription.current_period_end * 1000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                              }
+                            </p>
+                          )}
+                        </div>
+
+                        {subscriptionStatus.subscription?.cancel_at_period_end && subscriptionStatus.subscription?.id && (
+                          <div style={{
+                            marginTop: '1rem',
+                          }}>
+                            <button
+                              onClick={handleResumeSubscription}
+                              disabled={subscriptionActionLoading}
+                              style={{
+                                padding: '0.75rem 1.5rem',
+                                borderRadius: '8px',
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                fontFamily: 'var(--font-inter)',
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                cursor: subscriptionActionLoading ? 'not-allowed' : 'pointer',
+                                opacity: subscriptionActionLoading ? 0.7 : 1,
+                                transition: 'background-color 0.2s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!subscriptionActionLoading) {
+                                  e.currentTarget.style.backgroundColor = '#059669';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!subscriptionActionLoading) {
+                                  e.currentTarget.style.backgroundColor = '#10b981';
+                                }
+                              }}
+                            >
+                              {subscriptionActionLoading ? 'Processing...' : 'Resume Subscription'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  );
+                })()}
               </div>
             </ScrollAnimation>
           </div>

@@ -35,27 +35,38 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
   const [error, setError] = useState<string | null>(null);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [actualUserId, setActualUserId] = useState<string | null>(userId || null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Get userId from session if not provided
+  // Get userId and email from session if not provided
   useEffect(() => {
     const getUserId = async () => {
-      if (actualUserId) return;
-      
       const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        setActualUserId(session.user.id);
+      if (session?.user) {
+        if (!actualUserId && session.user.id) {
+          setActualUserId(session.user.id);
+        }
+        if (!userEmail && session.user.email) {
+          setUserEmail(session.user.email);
+        }
       }
     };
     
     getUserId();
-  }, [actualUserId]);
+  }, [actualUserId, userEmail]);
 
-  // Create payment intent when component mounts
+  // Create subscription when component mounts
   useEffect(() => {
-    const createPaymentIntent = async () => {
+    const createSubscription = async () => {
       const userIdToUse = actualUserId || userId;
+      const emailToUse = userEmail;
+      
       if (!userIdToUse) {
         setError('Please log in to upgrade your membership.');
+        return;
+      }
+
+      if (!emailToUse) {
+        setError('Email address is required for subscription.');
         return;
       }
 
@@ -65,7 +76,10 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ userId: userIdToUse }),
+          body: JSON.stringify({ 
+            userId: userIdToUse,
+            customerEmail: emailToUse,
+          }),
         });
 
         const data = await response.json();
@@ -81,10 +95,10 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
       }
     };
 
-    if (actualUserId || userId) {
-      createPaymentIntent();
+    if ((actualUserId || userId) && userEmail) {
+      createSubscription();
     }
-  }, [actualUserId, userId]);
+  }, [actualUserId, userId, userEmail]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,28 +133,30 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
       }
 
       if (paymentIntent?.status === 'succeeded') {
-        // Payment succeeded, upgrade membership
+        // Payment succeeded, subscription is now active
+        // The webhook will handle updating the membership status
+        // But we can also call the upgrade endpoint immediately for faster UX
         const userIdToUse = actualUserId || userId;
-        if (!userIdToUse) {
-          setError('User ID not found. Please try again.');
-          setLoading(false);
-          return;
-        }
+        if (userIdToUse) {
+          try {
+            const upgradeResponse = await fetch('/api/membership/upgrade', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ userId: userIdToUse }),
+            });
 
-        const upgradeResponse = await fetch('/api/membership/upgrade', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userId: userIdToUse }),
-        });
-
-        const upgradeData = await upgradeResponse.json();
-
-        if (upgradeData.error) {
-          setError('Payment succeeded but failed to upgrade membership. Please contact support.');
-          setLoading(false);
-          return;
+            const upgradeData = await upgradeResponse.json();
+            
+            // Don't fail if upgrade endpoint has issues - webhook will handle it
+            if (upgradeData.error) {
+              console.warn('Upgrade endpoint error:', upgradeData.error);
+            }
+          } catch (err) {
+            console.warn('Error calling upgrade endpoint:', err);
+            // Continue anyway - webhook will handle it
+          }
         }
 
         // Refresh user session to get updated metadata
@@ -150,6 +166,10 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
         // The page will update membership status through the auth state listener
         onSuccess();
         onClose();
+      } else if (paymentIntent?.status === 'requires_action') {
+        // Payment requires additional authentication
+        setError('Please complete the authentication steps shown by your bank.');
+        setLoading(false);
       } else {
         setError('Payment did not complete successfully');
         setLoading(false);
@@ -422,7 +442,7 @@ export default function UpgradeModal({ isOpen, onClose, userId, onSuccess }: Upg
               marginBottom: '0.5rem',
             }}
           >
-            Upgrade to Membership
+            Upgrade to Pro
           </h2>
           <p
             style={{
@@ -432,7 +452,7 @@ export default function UpgradeModal({ isOpen, onClose, userId, onSuccess }: Upg
               marginBottom: '1rem',
             }}
           >
-            Unlock access to community features, artist connections, and more.
+            Unlock access to community features, artist connections, and more. Recurring monthly subscription.
           </p>
           <div
             style={{
@@ -444,7 +464,7 @@ export default function UpgradeModal({ isOpen, onClose, userId, onSuccess }: Upg
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontFamily: 'var(--font-inter)', color: 'var(--text-dark)' }}>
-                Membership
+                Pro Membership
               </span>
               <span
                 style={{
@@ -454,7 +474,7 @@ export default function UpgradeModal({ isOpen, onClose, userId, onSuccess }: Upg
                   color: 'var(--text-dark)',
                 }}
               >
-                $5
+                $8/month
               </span>
             </div>
           </div>

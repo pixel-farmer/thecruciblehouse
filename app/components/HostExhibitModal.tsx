@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 
 interface HostExhibitModalProps {
@@ -9,95 +10,112 @@ interface HostExhibitModalProps {
   onSuccess: () => void;
 }
 
-// Country and state data (same as HostMeetupModal)
-const COUNTRIES = [
-  { code: 'AR', name: 'Argentina' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'CL', name: 'Chile' },
-  { code: 'CN', name: 'China' },
-  { code: 'CO', name: 'Colombia' },
-  { code: 'CZ', name: 'Czech Republic' },
-  { code: 'DK', name: 'Denmark' },
-  { code: 'EG', name: 'Egypt' },
-  { code: 'FI', name: 'Finland' },
-  { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'GR', name: 'Greece' },
-  { code: 'HU', name: 'Hungary' },
-  { code: 'IN', name: 'India' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'IE', name: 'Ireland' },
-  { code: 'IL', name: 'Israel' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'MY', name: 'Malaysia' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'NO', name: 'Norway' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'PL', name: 'Poland' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'RO', name: 'Romania' },
-  { code: 'RU', name: 'Russia' },
-  { code: 'SA', name: 'Saudi Arabia' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'TH', name: 'Thailand' },
-  { code: 'TR', name: 'Turkey' },
-  { code: 'AE', name: 'United Arab Emirates' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'VN', name: 'Vietnam' },
-  { code: 'OTHER', name: 'Other' },
-];
-
-const US_STATES = [
-  'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware',
-  'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky',
-  'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi',
-  'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico',
-  'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania',
-  'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
-  'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming', 'District of Columbia',
-];
-
-const CA_PROVINCES = [
-  'Alberta', 'British Columbia', 'Manitoba', 'New Brunswick', 'Newfoundland and Labrador',
-  'Northwest Territories', 'Nova Scotia', 'Nunavut', 'Ontario', 'Prince Edward Island',
-  'Quebec', 'Saskatchewan', 'Yukon',
-];
-
-const AU_STATES = [
-  'Australian Capital Territory', 'New South Wales', 'Northern Territory', 'Queensland',
-  'South Australia', 'Tasmania', 'Victoria', 'Western Australia',
-];
-
-// Map countries to their states/provinces
-const COUNTRY_STATES: Record<string, string[]> = {
-  'US': US_STATES,
-  'CA': CA_PROVINCES,
-  'AU': AU_STATES,
-};
-
 export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExhibitModalProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [country, setCountry] = useState('');
-  const [state, setState] = useState('');
-  const [city, setCity] = useState('');
+  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userName, setUserName] = useState('');
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const locationInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<any>(null);
+  const [bannerImage, setBannerImage] = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get user info
+  useEffect(() => {
+    const getUserInfo = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const displayName = session.user.user_metadata?.display_name || 
+                          session.user.user_metadata?.full_name || 
+                          session.user.user_metadata?.name || 
+                          session.user.email?.split('@')[0] || 
+                          'User';
+        setUserName(displayName);
+        setUserAvatar(session.user.user_metadata?.avatar_url || 
+                     session.user.user_metadata?.picture || null);
+      }
+    };
+    getUserInfo();
+  }, []);
+
+  // Load Google Maps and initialize autocomplete
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Wait for the input to be rendered
+    const timer = setTimeout(() => {
+      if (!locationInputRef.current) return;
+
+      const initializeAutocomplete = () => {
+        const google = (window as any).google;
+        if (google && google.maps && google.maps.places) {
+          if (locationInputRef.current && !autocompleteRef.current) {
+            const autocomplete = new google.maps.places.Autocomplete(locationInputRef.current, {
+              types: ['establishment', 'geocode'],
+              fields: ['formatted_address', 'geometry', 'name', 'place_id'],
+            });
+
+            autocomplete.addListener('place_changed', () => {
+              const place = autocomplete.getPlace();
+              if (place.formatted_address) {
+                setLocation(place.formatted_address);
+              }
+            });
+
+            autocompleteRef.current = autocomplete;
+          }
+          setMapLoaded(true);
+        } else {
+          // Load Google Maps script
+          const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+          if (!apiKey) {
+            console.error('Google Maps API key not found');
+            return;
+          }
+
+          const existingScripts = document.querySelectorAll('script[src*="maps.googleapis.com/maps/api/js"]');
+          if (existingScripts.length > 0) {
+            // Wait for it to load
+            const checkInterval = setInterval(() => {
+              const google = (window as any).google;
+              if (google && google.maps && google.maps.places) {
+                clearInterval(checkInterval);
+                initializeAutocomplete();
+              }
+            }, 100);
+            setTimeout(() => clearInterval(checkInterval), 5000); // Cleanup after 5 seconds
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initAutocompleteExhibit`;
+          script.async = true;
+          script.defer = true;
+
+          (window as any).initAutocompleteExhibit = () => {
+            initializeAutocomplete();
+          };
+
+          document.head.appendChild(script);
+        }
+      };
+
+      initializeAutocomplete();
+    }, 100); // Small delay to ensure DOM is ready
+
+    return () => {
+      clearTimeout(timer);
+      autocompleteRef.current = null;
+    };
+  }, [isOpen]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -106,30 +124,110 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
       setDescription('');
       setStartDate('');
       setEndDate('');
-      setCountry('');
-      setState('');
-      setCity('');
+      setLocation('');
+      setBannerImage(null);
+      setBannerPreview(null);
       setError(null);
+      autocompleteRef.current = null;
     }
   }, [isOpen]);
 
-  // Get available states/provinces for selected country
-  const getAvailableStates = (): string[] => {
-    if (!country || country === 'OTHER') return [];
-    return COUNTRY_STATES[country] || [];
+  // Handle banner image upload
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setError('Image size must be less than 5MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setBannerPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Validate dimensions (recommended: 800x300, but accept any)
+    const img = new window.Image();
+    img.onload = async () => {
+      // Recommended size is 800x300, but we'll accept any size
+      // Just warn if it's way off
+      if (img.width < 400 || img.height < 150) {
+        setError('Image is too small. Recommended size: 800x300px');
+        return;
+      }
+
+      setError(null);
+      setUploadingImage(true);
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setError('You must be logged in to upload images');
+          setUploadingImage(false);
+          return;
+        }
+
+        // Upload to Supabase Storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `exhibitions/${session.user.id}-${Date.now()}.${fileExt}`;
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('event-images')
+          .upload(fileName, file, {
+            contentType: file.type,
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          setError('Failed to upload image. Please try again.');
+          setUploadingImage(false);
+          return;
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('event-images')
+          .getPublicUrl(fileName);
+
+        if (urlData?.publicUrl) {
+          setBannerImage(urlData.publicUrl);
+        } else {
+          setError('Failed to get image URL');
+        }
+      } catch (err: any) {
+        console.error('Image upload error:', err);
+        setError(err.message || 'Failed to upload image');
+      } finally {
+        setUploadingImage(false);
+      }
+    };
+    img.onerror = () => {
+      setError('Invalid image file');
+      setUploadingImage(false);
+    };
+    img.src = URL.createObjectURL(file);
   };
 
-  // Build location string from components
-  const buildLocationString = (): string => {
-    const parts: string[] = [];
-    if (city) parts.push(city);
-    if (state) parts.push(state);
-    if (country && country !== 'OTHER') {
-      const countryName = COUNTRIES.find(c => c.code === country)?.name || country;
-      parts.push(countryName);
+  // Set default start date to today
+  useEffect(() => {
+    if (isOpen && !startDate) {
+      const today = new Date();
+      const dateStr = today.toISOString().split('T')[0];
+      setStartDate(dateStr);
     }
-    return parts.join(', ');
-  };
+  }, [isOpen, startDate]);
 
   if (!isOpen) return null;
 
@@ -137,23 +235,20 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
     e.preventDefault();
     setError(null);
 
-    const locationString = buildLocationString();
-
-    if (!title.trim() || !description.trim() || !startDate || !country || !city.trim()) {
+    if (!title.trim() || !description.trim() || !startDate || !location.trim()) {
       setError('Please fill in all required fields');
       return;
     }
 
-    // If country has states/provinces, require state selection
-    const availableStates = getAvailableStates();
-    if (availableStates.length > 0 && !state) {
-      setError('Please select a state/province');
+    // Validate start date is in the future
+    const start = new Date(startDate);
+    if (start < new Date(new Date().setHours(0, 0, 0, 0))) {
+      setError('Start date must be today or in the future');
       return;
     }
 
     // Validate end date if provided
     if (endDate) {
-      const start = new Date(startDate);
       const end = new Date(endDate);
       if (end < start) {
         setError('End date must be after start date');
@@ -183,19 +278,12 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
           description: description.trim(),
           start_date: startDate,
           end_date: endDate || null,
-          location: locationString,
+          location: location.trim(),
+          banner_image_url: bannerImage || null,
         }),
       });
 
       if (response.ok) {
-        // Reset form
-        setTitle('');
-        setDescription('');
-        setStartDate('');
-        setEndDate('');
-        setCountry('');
-        setState('');
-        setCity('');
         onSuccess();
         onClose();
       } else {
@@ -236,8 +324,7 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
         style={{
           backgroundColor: 'white',
           borderRadius: '12px',
-          padding: '2rem',
-          maxWidth: '500px',
+          maxWidth: '600px',
           width: '100%',
           maxHeight: '90vh',
           overflow: 'auto',
@@ -245,8 +332,21 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h2 style={{ margin: 0, fontFamily: 'var(--font-inter)', fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+        {/* Header */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          padding: '1.5rem',
+          borderBottom: '1px solid #eee',
+        }}>
+          <h2 style={{ 
+            margin: 0, 
+            fontFamily: 'var(--font-inter)', 
+            fontSize: '1.5rem', 
+            fontWeight: 600, 
+            color: 'var(--text-dark)' 
+          }}>
             Post an Exhibit
           </h2>
           <button
@@ -270,333 +370,393 @@ export default function HostExhibitModal({ isOpen, onClose, onSuccess }: HostExh
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="title"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
+        {/* Event Banner */}
+        <div style={{
+          height: '225px',
+          backgroundColor: '#f5f5f5',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0',
+          overflow: 'hidden',
+        }}>
+          {bannerPreview || bannerImage ? (
+            <>
+              <img
+                src={bannerPreview || bannerImage || ''}
+                alt="Event banner"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setBannerImage(null);
+                  setBannerPreview(null);
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                }}
+                style={{
+                  position: 'absolute',
+                  bottom: '1rem',
+                  right: '1rem',
+                  padding: '0.5rem 1rem',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  color: 'var(--text-dark)',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}
+              >
+                <span>Remove</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ display: 'none' }}
+                disabled={uploadingImage}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingImage}
+                style={{
+                  position: 'absolute',
+                  bottom: '1rem',
+                  right: '1rem',
+                  padding: '0.5rem 1rem',
+                  border: '2px solid #ddd',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  color: 'var(--text-dark)',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.9rem',
+                  cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  opacity: uploadingImage ? 0.6 : 1,
+                }}
+              >
+                <span>+</span>
+                <span>{uploadingImage ? 'Uploading...' : 'Add'}</span>
+              </button>
+              <div style={{
+                position: 'absolute',
+                bottom: '3.5rem',
+                left: '1rem',
+                right: '1rem',
+                textAlign: 'center',
                 fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
+                fontSize: '0.85rem',
+                color: 'var(--text-light)',
+              }}>
+                Recommended: 800x300px (max 5MB)
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Host Information */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid #eee',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {userAvatar ? (
+              <Image
+                src={userAvatar}
+                alt={userName}
+                width={40}
+                height={40}
+                style={{ borderRadius: '50%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                backgroundColor: '#ff6622',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'var(--font-inter)',
                 fontWeight: 600,
+                fontSize: '1rem',
+              }}>
+                {userName.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div>
+              <div style={{ 
+                fontFamily: 'var(--font-inter)', 
+                fontWeight: 600, 
+                fontSize: '0.95rem',
                 color: 'var(--text-dark)',
-              }}
-            >
-              Title *
-            </label>
+              }}>
+                {userName}
+              </div>
+              <div style={{ 
+                fontFamily: 'var(--font-inter)', 
+                fontSize: '0.85rem',
+                color: 'var(--text-light)',
+              }}>
+                Host - Your profile
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
+          {/* Event Name */}
+          <div style={{ marginBottom: '1.5rem' }}>
             <input
-              id="title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={loading}
               required
               maxLength={100}
+              placeholder="Event name"
               style={{
                 width: '100%',
                 padding: '0.75rem',
-                border: '1px solid #ddd',
+                border: '2px solid #ff6622',
                 borderRadius: '8px',
                 fontFamily: 'var(--font-inter)',
                 fontSize: '1rem',
                 outline: 'none',
                 boxSizing: 'border-box',
               }}
-              placeholder="e.g., Contemporary Art Showcase"
+            />
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginTop: '0.25rem',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.85rem',
+              color: 'var(--text-light)',
+            }}>
+              {title.length}/100
+            </div>
+          </div>
+
+          {/* Date Fields */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Start Date */}
+              <div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  color: 'var(--text-dark)',
+                  marginBottom: '0.5rem',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  Start date
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  disabled={loading}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* End Date */}
+              <div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontFamily: 'var(--font-inter)',
+                  fontSize: '0.9rem',
+                  fontWeight: 500,
+                  color: 'var(--text-dark)',
+                  marginBottom: '0.5rem',
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  End date (optional)
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={loading}
+                  min={startDate || undefined}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontFamily: 'var(--font-inter)',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{
+              display: 'block',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              color: 'var(--text-dark)',
+              marginBottom: '0.5rem',
+            }}>
+              Add location
+            </label>
+            <input
+              ref={locationInputRef}
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              disabled={loading}
+              required
+              placeholder="Search for a location..."
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                fontFamily: 'var(--font-inter)',
+                fontSize: '0.95rem',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
             />
           </div>
 
+          {/* Details */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="description"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'var(--text-dark)',
-              }}
-            >
-              Description *
+            <label style={{
+              display: 'block',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '0.9rem',
+              fontWeight: 500,
+              color: 'var(--text-dark)',
+              marginBottom: '0.5rem',
+            }}>
+              What are the details?
             </label>
             <textarea
-              id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={loading}
               required
-              maxLength={500}
-              rows={4}
+              maxLength={1000}
+              rows={6}
+              placeholder="Describe your exhibition..."
               style={{
                 width: '100%',
                 padding: '0.75rem',
                 border: '1px solid #ddd',
                 borderRadius: '8px',
                 fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
+                fontSize: '0.95rem',
                 outline: 'none',
                 resize: 'vertical',
-                boxSizing: 'border-box',
-              }}
-              placeholder="Describe your exhibition..."
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="startDate"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'var(--text-dark)',
-              }}
-            >
-              Start Date *
-            </label>
-            <input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={loading}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="endDate"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'var(--text-dark)',
-              }}
-            >
-              End Date (Optional)
-            </label>
-            <input
-              id="endDate"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              disabled={loading}
-              min={startDate || undefined}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                outline: 'none',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="country"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'var(--text-dark)',
-              }}
-            >
-              Country *
-            </label>
-            <select
-              id="country"
-              value={country}
-              onChange={(e) => {
-                setCountry(e.target.value);
-                setState(''); // Reset state when country changes
-              }}
-              disabled={loading}
-              required
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                outline: 'none',
-                boxSizing: 'border-box',
-                backgroundColor: 'white',
-                cursor: loading ? 'not-allowed' : 'pointer',
-              }}
-            >
-              <option value="">Select a country</option>
-              {COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {getAvailableStates().length > 0 && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <label
-                htmlFor="state"
-                style={{
-                  display: 'block',
-                  marginBottom: '0.5rem',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '0.9rem',
-                  fontWeight: 600,
-                  color: 'var(--text-dark)',
-                }}
-              >
-                State/Province *
-              </label>
-              <select
-                id="state"
-                value={state}
-                onChange={(e) => setState(e.target.value)}
-                disabled={loading || !country}
-                required
-                style={{
-                  width: '100%',
-                  padding: '0.75rem',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontFamily: 'var(--font-inter)',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  backgroundColor: 'white',
-                  cursor: loading || !country ? 'not-allowed' : 'pointer',
-                }}
-              >
-                <option value="">Select a state/province</option>
-                {getAvailableStates().map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label
-              htmlFor="city"
-              style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-                fontWeight: 600,
-                color: 'var(--text-dark)',
-              }}
-            >
-              City *
-            </label>
-            <input
-              id="city"
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              disabled={loading}
-              required
-              maxLength={100}
-              placeholder="Enter city name"
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                outline: 'none',
                 boxSizing: 'border-box',
               }}
             />
           </div>
 
           {error && (
-            <div
-              style={{
-                marginBottom: '1rem',
-                padding: '0.75rem',
-                backgroundColor: '#fee',
-                border: '1px solid #fcc',
-                borderRadius: '8px',
-                color: '#c33',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '0.9rem',
-              }}
-            >
+            <div style={{
+              padding: '0.75rem',
+              marginBottom: '1rem',
+              backgroundColor: '#fee',
+              border: '1px solid #fcc',
+              borderRadius: '8px',
+              color: '#c33',
+              fontSize: '0.9rem',
+              fontFamily: 'var(--font-inter)',
+            }}>
               {error}
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={loading}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                backgroundColor: 'white',
-                color: 'var(--text-dark)',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                outline: 'none',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                padding: '0.75rem 1.5rem',
-                border: 'none',
-                borderRadius: '8px',
-                backgroundColor: loading ? '#ccc' : '#ff6622',
-                color: 'white',
-                fontFamily: 'var(--font-inter)',
-                fontSize: '1rem',
-                fontWeight: 600,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                outline: 'none',
-                transition: 'background-color 0.2s ease',
-              }}
-            >
-              {loading ? 'Creating...' : 'Create Exhibition'}
-            </button>
-          </div>
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.75rem',
+              backgroundColor: loading ? '#ccc' : '#ff6622',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontFamily: 'var(--font-inter)',
+              fontSize: '1rem',
+              fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'background-color 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = '#e55a1a';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) {
+                e.currentTarget.style.backgroundColor = '#ff6622';
+              }
+            }}
+          >
+            {loading ? 'Creating...' : 'Create exhibit'}
+          </button>
         </form>
       </div>
     </div>
   );
 }
-

@@ -57,8 +57,8 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
   return client;
 }
 
-// GET: Fetch all posts
-export async function GET() {
+// GET: Fetch all posts (optionally filtered by group_id)
+export async function GET(request: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -80,12 +80,26 @@ export async function GET() {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch posts ordered by created_at descending (newest first)
-    const { data, error } = await supabase
+    // Get group_id from query parameters
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get('group_id');
+
+    // Build query
+    let query = supabase
       .from('community_posts')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100); // Limit to 100 most recent posts
+
+    // Filter by group_id if provided
+    if (groupId) {
+      query = query.eq('group_id', groupId);
+    } else {
+      // If no group_id, only fetch general posts (group_id is NULL)
+      query = query.is('group_id', null);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('[posts GET] Supabase error:', error);
@@ -116,7 +130,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, userName, userHandle, userAvatar } = body;
+    const { content, userName, userHandle, userAvatar, groupId } = body;
 
     if (!content || typeof content !== 'string' || content.trim().length === 0) {
       return NextResponse.json(
@@ -190,6 +204,7 @@ export async function POST(request: NextRequest) {
         user_name: finalUserName,
         user_handle: finalUserHandle,
         user_avatar: finalUserAvatar,
+        group_id: groupId || null, // Set group_id if provided, otherwise null for general posts
       })
       .select()
       .single();

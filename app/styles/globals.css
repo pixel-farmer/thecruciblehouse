@@ -67,3 +67,72 @@ form > *:not(:last-child) {
 form > div:not(:last-child) {
   margin-bottom: 20px;
 }
+
+/* Google Maps Places Autocomplete Dropdown Styling */
+.pac-container {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-family: var(--font-inter), sans-serif;
+  margin-top: 4px;
+  overflow: hidden;
+  z-index: 10001 !important; /* Ensure it appears above modals */
+}
+
+.pac-item {
+  border-top: 1px solid #f0f0f0;
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 12px 16px;
+  transition: background-color 0.2s ease;
+}
+
+.pac-item:first-child {
+  border-top: none;
+}
+
+.pac-item:hover {
+  background-color: #f5f5f5;
+}
+
+.pac-item-selected,
+.pac-item-selected:hover {
+  background-color: #e8f0fe;
+}
+
+.pac-icon {
+  margin-right: 10px;
+  width: 15px;
+  height: 20px;
+}
+
+.pac-item-query {
+  color: var(--text-dark);
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding-right: 3px;
+}
+
+.pac-matched {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+.pac-item-query .pac-matched {
+  font-weight: 600;
+}
+
+.pac-item-query .pac-not-matched {
+  font-weight: 400;
+}
+
+.pac-item-sub {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
+.pac-container:after {
+  display: none !important;
+}

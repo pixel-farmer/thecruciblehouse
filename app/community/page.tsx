@@ -1,7 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -12,6 +13,7 @@ import HostExhibitModal from '../components/HostExhibitModal';
 import styles from '../styles/Community.module.css';
 
 export default function CommunityPage() {
+  const searchParams = useSearchParams();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPaidMembership, setHasPaidMembership] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -22,8 +24,10 @@ export default function CommunityPage() {
   const [userHandle, setUserHandle] = useState('');
   const [userId, setUserId] = useState<string | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
+  const [groupPosts, setGroupPosts] = useState<any[]>([]);
   const [isPosting, setIsPosting] = useState(false);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [groupPostsLoading, setGroupPostsLoading] = useState(false);
   const [isMapFullscreen, setIsMapFullscreen] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [mapInstance, setMapInstance] = useState<any>(null);
@@ -38,6 +42,23 @@ export default function CommunityPage() {
   const [selectedMeetup, setSelectedMeetup] = useState<any | null>(null);
   const [exhibitions, setExhibitions] = useState<any[]>([]);
   const [exhibitionsLoading, setExhibitionsLoading] = useState(true);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(true);
+  const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
+  const [isGroupMember, setIsGroupMember] = useState(false);
+  const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+
+  // Check for upgrade query parameter
+  useEffect(() => {
+    const upgradeParam = searchParams?.get('upgrade');
+    if (upgradeParam === 'true' && isLoggedIn && !hasPaidMembership) {
+      setShowUpgradeModal(true);
+      // Remove the query parameter from URL without reload
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({}, '', '/community');
+      }
+    }
+  }, [searchParams, isLoggedIn, hasPaidMembership]);
 
   useEffect(() => {
     // Check authentication and membership status
@@ -585,14 +606,6 @@ export default function CommunityPage() {
     }
   }, [fullscreenMapInstance, hasPaidMembership]);
 
-  // Fetch posts on load
-  useEffect(() => {
-    fetchPosts();
-    fetchRecentMembers();
-    fetchMeetups();
-    fetchExhibitions();
-  }, []);
-
   const fetchMeetups = async () => {
     try {
       setMeetupsLoading(true);
@@ -633,6 +646,26 @@ export default function CommunityPage() {
     }
   };
 
+  const fetchGroups = async () => {
+    try {
+      setGroupsLoading(true);
+      const response = await fetch('/api/groups');
+      
+      if (response.ok) {
+        const data = await response.json();
+        setGroups(data.groups || []);
+      } else {
+        console.error('Failed to fetch groups');
+        setGroups([]);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      setGroups([]);
+    } finally {
+      setGroupsLoading(false);
+    }
+  };
+
   const fetchRecentMembers = async () => {
     try {
       setMembersLoading(true);
@@ -654,14 +687,24 @@ export default function CommunityPage() {
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async (groupId?: string | null) => {
     try {
-      setPostsLoading(true);
-      const response = await fetch('/api/posts');
+      if (groupId) {
+        setGroupPostsLoading(true);
+      } else {
+        setPostsLoading(true);
+      }
+      
+      const url = groupId ? `/api/posts?group_id=${groupId}` : '/api/posts';
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
-        setPosts(data.posts || []);
+        if (groupId) {
+          setGroupPosts(data.posts || []);
+        } else {
+          setPosts(data.posts || []);
+        }
       } else {
         // Get the error details from the response
         let errorData: any = {};
@@ -703,14 +746,147 @@ export default function CommunityPage() {
         }
         
         // Show empty state - error is logged but won't break the UI
-        setPosts([]);
+        if (groupId) {
+          setGroupPosts([]);
+        } else {
+          setPosts([]);
+        }
       }
     } catch (error) {
       console.error('Error fetching posts (network/exception):', error);
       // Show empty state - error is logged but won't break the UI
-      setPosts([]);
+      if (groupId) {
+        setGroupPosts([]);
+      } else {
+        setPosts([]);
+      }
     } finally {
-      setPostsLoading(false);
+      if (groupId) {
+        setGroupPostsLoading(false);
+      } else {
+        setPostsLoading(false);
+      }
+    }
+  }, []);
+
+  // Fetch posts on load
+  useEffect(() => {
+    fetchPosts();
+    fetchRecentMembers();
+    fetchMeetups();
+    fetchExhibitions();
+    fetchGroups();
+  }, [fetchPosts]);
+
+  // Fetch group posts and check membership when a group is selected
+  useEffect(() => {
+    if (selectedGroup?.id) {
+      fetchPosts(selectedGroup.id);
+      checkGroupMembership(selectedGroup.id);
+    } else {
+      // Clear group posts when no group is selected
+      setGroupPosts([]);
+      setIsGroupMember(false);
+    }
+  }, [selectedGroup, fetchPosts]);
+
+  const checkGroupMembership = async (groupId: string) => {
+    if (!isLoggedIn || !userId) {
+      setIsGroupMember(false);
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsGroupMember(false);
+        return;
+      }
+
+      const response = await fetch(`/api/groups/${groupId}/members`, {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsGroupMember(data.isMember || false);
+      } else {
+        setIsGroupMember(false);
+      }
+    } catch (error) {
+      console.error('Error checking group membership:', error);
+      setIsGroupMember(false);
+    }
+  };
+
+  const handleJoinLeaveGroup = async () => {
+    if (!isLoggedIn || !userId || !selectedGroup?.id || isJoiningGroup) return;
+
+    try {
+      setIsJoiningGroup(true);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('Please log in to join or leave a group.');
+        setIsJoiningGroup(false);
+        return;
+      }
+
+      const method = isGroupMember ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/groups/${selectedGroup.id}/members`, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Update membership status - after joining, user is now a member; after leaving, they're not
+        const newMembershipStatus = method === 'POST';
+        setIsGroupMember(newMembershipStatus);
+        
+        // Update the member count in the selected group
+        const newMemberCount = data.memberCount !== undefined ? data.memberCount : (newMembershipStatus ? selectedGroup.member_count + 1 : selectedGroup.member_count - 1);
+        setSelectedGroup({
+          ...selectedGroup,
+          member_count: newMemberCount,
+        });
+        
+        // Also update in the groups list
+        setGroups(groups.map(g => 
+          g.id === selectedGroup.id 
+            ? { ...g, member_count: newMemberCount }
+            : g
+        ));
+        
+        // Verify membership status from server to ensure accuracy
+        await checkGroupMembership(selectedGroup.id);
+      } else {
+        let error: any = {};
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            error = await response.json();
+          } else {
+            const text = await response.text();
+            error = { error: text || `HTTP ${response.status}: ${response.statusText}` };
+          }
+        } catch (parseError) {
+          error = { error: `HTTP ${response.status}: ${response.statusText}` };
+        }
+        console.error('Failed to join/leave group:', response.status, error);
+        alert(error.error || error.details || 'Failed to join/leave group. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error joining/leaving group:', error);
+      alert('An error occurred. Please try again.');
+    } finally {
+      setIsJoiningGroup(false);
     }
   };
 
@@ -729,6 +905,9 @@ export default function CommunityPage() {
         return;
       }
 
+      // If we're in a group view, include the group ID
+      const groupId = selectedGroup?.id || null;
+
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: {
@@ -740,16 +919,23 @@ export default function CommunityPage() {
           userName,
           userHandle,
           userAvatar: userAvatar || userInitials,
+          groupId: groupId,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        // Add the new post to the beginning of the posts array
-        setPosts([data.post, ...posts]);
+        // Add the new post to the appropriate array
+        if (groupId) {
+          setGroupPosts([data.post, ...groupPosts]);
+          // Refresh group posts
+          await fetchPosts(groupId);
+        } else {
+          setPosts([data.post, ...posts]);
+          // Refresh general posts
+          await fetchPosts();
+        }
         setPostText('');
-        // Refresh posts to ensure we have the latest
-        await fetchPosts();
         // Refresh recent members since user activity changed
         await fetchRecentMembers();
       } else {
@@ -868,28 +1054,266 @@ export default function CommunityPage() {
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>Groups</h3>
-                  <div className={styles.groupList}>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Digital Artists Collective</h5>
-                      <p className={styles.groupMembers}>245 members</p>
+                  {groupsLoading ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+                      Loading...
                     </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Traditional Techniques</h5>
-                      <p className={styles.groupMembers}>189 members</p>
+                  ) : groups.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-light)', fontFamily: 'var(--font-inter)', fontSize: '0.9rem' }}>
+                      No groups available yet.
                     </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Business & Marketing</h5>
-                      <p className={styles.groupMembers}>312 members</p>
+                  ) : (
+                    <div className={styles.groupList}>
+                      {groups.map((group) => (
+                        <div 
+                          key={group.id} 
+                          className={styles.groupItem}
+                          onClick={() => {
+                            setSelectedGroup(group);
+                            setSelectedMeetup(null); // Clear meetup selection when group is selected
+                          }}
+                          style={{
+                            cursor: 'pointer',
+                            transition: 'background-color 0.2s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.02)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <h5 className={styles.groupName}>{group.name}</h5>
+                          <p className={styles.groupMembers}>
+                            {group.member_count || 0} {group.member_count === 1 ? 'member' : 'members'}
+                          </p>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </ScrollAnimation>
             </div>
 
-            {/* Column 2: Community Feed or Meetup Details */}
+            {/* Column 2: Community Feed, Meetup Details, or Group Feed */}
             <ScrollAnimation>
               <div className={styles.column}>
-                {selectedMeetup ? (
+                {selectedGroup ? (
+                  <div style={{
+                    backgroundColor: 'white',
+                    borderRadius: '12px',
+                    padding: '2rem',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                      <h2 style={{ 
+                        margin: 0, 
+                        fontFamily: 'var(--font-inter)', 
+                        fontSize: '1.75rem', 
+                        fontWeight: 600, 
+                        color: 'var(--text-dark)' 
+                      }}>
+                        {selectedGroup.name}
+                      </h2>
+                      <button
+                        onClick={() => {
+                          setSelectedGroup(null);
+                          setSelectedMeetup(null);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '1.5rem',
+                          cursor: 'pointer',
+                          color: 'var(--text-light)',
+                          padding: '0',
+                          width: '30px',
+                          height: '30px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          borderRadius: '50%',
+                          transition: 'background-color 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+
+                    {selectedGroup.description && (
+                      <div style={{ 
+                        marginBottom: '2rem',
+                        paddingBottom: '2rem',
+                        borderBottom: '1px solid #eee',
+                      }}>
+                        <p style={{ 
+                          margin: 0,
+                          fontFamily: 'var(--font-inter)',
+                          fontSize: '1rem',
+                          lineHeight: '1.6',
+                          color: 'var(--text-dark)',
+                        }}>
+                          {selectedGroup.description}
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Member count and Join/Leave button - always visible */}
+                    <div style={{ 
+                      marginBottom: '2rem',
+                      paddingBottom: '2rem',
+                      borderBottom: '1px solid #eee',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}>
+                      <p style={{ 
+                        margin: 0,
+                        fontFamily: 'var(--font-inter)',
+                        fontSize: '0.9rem',
+                        color: 'var(--text-light)',
+                      }}>
+                        {selectedGroup.member_count || 0} {selectedGroup.member_count === 1 ? 'member' : 'members'}
+                      </p>
+                      {isLoggedIn && (
+                        <button
+                          onClick={handleJoinLeaveGroup}
+                          disabled={isJoiningGroup}
+                          style={{
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '0.9rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            borderRadius: '20px',
+                            backgroundColor: '#ff6622',
+                            color: 'white',
+                            outline: 'none',
+                            border: 'none',
+                            padding: '6px 16px',
+                            cursor: isJoiningGroup ? 'not-allowed' : 'pointer',
+                            transition: 'background-color 0.2s ease',
+                            opacity: isJoiningGroup ? 0.7 : 1,
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isJoiningGroup) {
+                              e.currentTarget.style.backgroundColor = '#e55a1a';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isJoiningGroup) {
+                              e.currentTarget.style.backgroundColor = '#ff6622';
+                            }
+                          }}
+                        >
+                          {isJoiningGroup ? '...' : (isGroupMember ? 'Leave' : 'Join')}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Post Composer */}
+                    <div className={styles.postComposer} style={{ marginBottom: '2rem' }}>
+                      <Link href="/profile" style={{ textDecoration: 'none' }}>
+                        {userAvatar && userAvatar.startsWith('http') ? (
+                          <div className={styles.postAvatarImage}>
+                            <Image
+                              src={userAvatar}
+                              alt="Profile"
+                              width={48}
+                              height={48}
+                              className={styles.postAvatarImg}
+                            />
+                          </div>
+                        ) : (
+                          <div className={styles.postAvatar}>{userInitials}</div>
+                        )}
+                      </Link>
+                      <div className={styles.composerContent}>
+                        <textarea
+                          className={styles.composerTextarea}
+                          placeholder="What's happening?"
+                          rows={3}
+                          value={postText}
+                          onChange={(e) => setPostText(e.target.value)}
+                          maxLength={300}
+                        />
+                        <div className={styles.composerActions}>
+                          <div className={styles.composerIcons}>
+                            {/* Icons can be added here later (image, etc.) */}
+                          </div>
+                          <div className={styles.composerRight}>
+                            {postText.length > 0 && (
+                              <span className={styles.characterCount}>
+                                {300 - postText.length}
+                              </span>
+                            )}
+                            <button 
+                              className={styles.postButton}
+                              disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
+                              onClick={handlePostSubmit}
+                            >
+                              {isPosting ? 'Posting...' : 'Post'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group Feed */}
+                    <div className={styles.postFeed}>
+                      {groupPostsLoading ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                          Loading posts...
+                        </div>
+                      ) : groupPosts.length === 0 ? (
+                        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                          No posts in this group yet. Be the first to post!
+                        </div>
+                      ) : (
+                        groupPosts.map((post) => {
+                          const userSlug = createUserSlug(post.user_handle, post.user_name);
+                          const artistLink = userSlug ? `/artist/${userSlug}` : `/profile`;
+                          
+                          return (
+                            <div key={post.id} className={styles.post}>
+                              <Link href={artistLink} style={{ textDecoration: 'none' }}>
+                                {post.user_avatar && post.user_avatar.startsWith('http') ? (
+                                  <div className={styles.postAvatarImage}>
+                                    <Image
+                                      src={post.user_avatar}
+                                      alt="Profile"
+                                      width={48}
+                                      height={48}
+                                      className={styles.postAvatarImg}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className={styles.postAvatar}>{post.user_avatar || 'U'}</div>
+                                )}
+                              </Link>
+                              <div className={styles.postContent}>
+                                <div className={styles.postHeader}>
+                                  <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <span className={styles.postName}>{post.user_name || 'User'}</span>
+                                  </Link>
+                                  <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                                  <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                                </div>
+                                <p className={styles.postText}>{post.content}</p>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                ) : selectedMeetup ? (
                   <div style={{
                     backgroundColor: 'white',
                     borderRadius: '12px',
@@ -907,7 +1331,10 @@ export default function CommunityPage() {
                         {selectedMeetup.title}
                       </h2>
                       <button
-                        onClick={() => setSelectedMeetup(null)}
+                        onClick={() => {
+                          setSelectedMeetup(null);
+                          setSelectedGroup(null);
+                        }}
                         style={{
                           background: 'none',
                           border: 'none',
@@ -1252,7 +1679,10 @@ export default function CommunityPage() {
                           <div 
                             key={meetup.id} 
                             className={styles.eventItem}
-                            onClick={() => setSelectedMeetup(meetup)}
+                            onClick={() => {
+                              setSelectedMeetup(meetup);
+                              setSelectedGroup(null); // Clear group selection when meetup is selected
+                            }}
                             style={{
                               cursor: 'pointer',
                               transition: 'background-color 0.2s ease',

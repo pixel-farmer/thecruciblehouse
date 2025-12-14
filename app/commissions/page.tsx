@@ -307,26 +307,6 @@ export default function CommissionsPage() {
                   </div>
                 </div>
               </ScrollAnimation>
-
-              <ScrollAnimation>
-                <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Groups</h3>
-                  <div className={styles.groupList}>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Portrait Artists</h5>
-                      <p className={styles.groupMembers}>245 members</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Landscape Specialists</h5>
-                      <p className={styles.groupMembers}>189 members</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Digital Artists</h5>
-                      <p className={styles.groupMembers}>312 members</p>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
             </aside>
           </div>
         </div>

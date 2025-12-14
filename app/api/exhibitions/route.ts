@@ -30,7 +30,7 @@ async function createAuthenticatedSupabaseClient(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, description, start_date, end_date, location } = body;
+    const { title, description, start_date, end_date, location, banner_image_url } = body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       return NextResponse.json(
@@ -144,6 +144,7 @@ export async function POST(request: NextRequest) {
         start_date: start_date,
         end_date: end_date || null,
         location: location.trim(),
+        banner_image_url: banner_image_url || null,
         host_id: user.id,
         host_name: user.user_metadata?.display_name ||
                   user.user_metadata?.full_name ||

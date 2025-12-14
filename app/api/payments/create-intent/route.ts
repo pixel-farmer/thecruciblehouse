@@ -5,7 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json();
+    const { userId, customerEmail } = await request.json();
 
     if (!userId) {
       return NextResponse.json(
@@ -14,26 +14,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Set membership price (in cents) - adjust this to your actual price
-    const MEMBERSHIP_PRICE_CENTS = 500; // $5 - change this!
+    // Monthly membership price: $8.00 = 800 cents
+    const MEMBERSHIP_PRICE_CENTS = 800;
+    
+    // Create or retrieve Stripe Customer
+    let customer;
+    const existingCustomers = await stripe.customers.list({
+      email: customerEmail,
+      limit: 1,
+    });
 
-    // Create Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: MEMBERSHIP_PRICE_CENTS,
-      currency: 'usd',
+    if (existingCustomers.data.length > 0) {
+      customer = existingCustomers.data[0];
+    } else {
+      customer = await stripe.customers.create({
+        email: customerEmail,
+        metadata: {
+          userId: userId,
+        },
+      });
+    }
+
+    // Create a Price for the subscription if not using a price ID
+    // For simplicity, we'll create a subscription directly with price data
+    // In production, you'd want to create the Price once in Stripe Dashboard and use its ID
+    
+    // Create Subscription with Setup Intent for initial payment
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{
+        price_data: {
+          currency: 'usd',
+          recurring: {
+            interval: 'month',
+          },
+          unit_amount: MEMBERSHIP_PRICE_CENTS,
+          product_data: {
+            name: 'Pro Membership',
+            description: 'Monthly Pro Membership',
+          },
+        },
+      }],
+      payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
+      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId: userId,
         type: 'membership',
       },
     });
 
+    const invoice = subscription.latest_invoice as Stripe.Invoice;
+    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent;
+
     return NextResponse.json({ 
-      clientSecret: paymentIntent.client_secret 
+      clientSecret: paymentIntent.client_secret,
+      subscriptionId: subscription.id,
     });
   } catch (error: any) {
-    console.error('Payment intent error:', error);
+    console.error('Subscription creation error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create payment intent' },
+      { error: error.message || 'Failed to create subscription' },
       { status: 500 }
     );
   }

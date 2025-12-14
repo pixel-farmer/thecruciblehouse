@@ -1,0 +1,238 @@
+.pricingPage {
+  min-height: calc(100vh - 120px);
+  padding: 120px 2rem 4rem 2rem;
+  background-color: #fafafa;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.title {
+  font-family: var(--font-playfair, 'Playfair Display', serif);
+  font-size: 3rem;
+  font-weight: 600;
+  color: var(--text-dark, #2c2c2c);
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 1.2rem;
+  color: var(--text-light, #666);
+}
+
+.pricingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+.pricingCard {
+  background: white;
+  border-radius: 12px;
+  padding: 2.5rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  position: relative;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pricingCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.proCard {
+  border: 2px solid #ff6622;
+  box-shadow: 0 4px 20px rgba(255, 102, 34, 0.2);
+}
+
+.proBadge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff6622 0%, #e55a1a 100%);
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 20px;
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cardHeader {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.planName {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-dark, #2c2c2c);
+  margin-bottom: 1rem;
+}
+
+.price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.priceAmount {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-dark, #2c2c2c);
+}
+
+.proCard .priceAmount {
+  color: #ff6622;
+}
+
+.pricePeriod {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 1.2rem;
+  color: var(--text-light, #666);
+}
+
+.priceNote {
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 0.9rem;
+  color: var(--text-light, #666);
+  margin-top: 0.5rem;
+}
+
+.cardContent {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.featuresList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.featureItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 1rem;
+  color: var(--text-dark, #2c2c2c);
+  line-height: 1.5;
+}
+
+.proFeature {
+  color: #ff6622;
+  font-weight: 500;
+}
+
+.checkIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #10b981;
+}
+
+.proFeature .checkIcon {
+  color: #ff6622;
+}
+
+.ctaButton {
+  width: 100%;
+  padding: 1rem 2rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: white;
+  color: var(--text-dark, #2c2c2c);
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.ctaButton:hover {
+  border-color: #ff6622;
+  color: #ff6622;
+  background: #fff5f2;
+}
+
+.proButton {
+  background: #ff6622;
+  color: white;
+  border-color: #ff6622;
+}
+
+.proButton:hover {
+  background: #e55a1a;
+  border-color: #e55a1a;
+  color: white;
+}
+
+.currentPlanBadge {
+  width: 100%;
+  padding: 1rem 2rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  background: #f5f5f5;
+  color: var(--text-light, #666);
+  font-family: var(--font-inter, 'Inter', sans-serif);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.proBadgeActive {
+  border-color: #ff6622;
+  background: #fff5f2;
+  color: #ff6622;
+}
+
+@media (max-width: 768px) {
+  .pricingPage {
+    padding: 120px 1rem 2rem 1rem;
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+  }
+
+  .pricingGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .pricingCard {
+    padding: 2rem;
+  }
+
+  .priceAmount {
+    font-size: 2.5rem;
+  }
+}
+
