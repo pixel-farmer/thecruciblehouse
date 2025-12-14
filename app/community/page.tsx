@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ import HostMeetupModal from '../components/HostMeetupModal';
 import HostExhibitModal from '../components/HostExhibitModal';
 import styles from '../styles/Community.module.css';
 
-export default function CommunityPage() {
+function CommunityPageContent() {
   const searchParams = useSearchParams();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPaidMembership, setHasPaidMembership] = useState(false);
@@ -1966,6 +1966,26 @@ export default function CommunityPage() {
         }}
       />
     </motion.div>
+  );
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        paddingTop: '120px'
+      }}>
+        <div style={{ color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
+          Loading...
+        </div>
+      </div>
+    }>
+      <CommunityPageContent />
+    </Suspense>
   );
 }
 
