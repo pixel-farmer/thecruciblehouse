@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Commissions.module.css';
 
@@ -23,6 +25,7 @@ interface Commission {
 }
 
 export default function CommissionsPage() {
+  const router = useRouter();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
@@ -31,6 +34,7 @@ export default function CommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasProMembership, setHasProMembership] = useState(false);
 
   const categories = [
     'All',
@@ -53,7 +57,33 @@ export default function CommissionsPage() {
 
   useEffect(() => {
     fetchCommissions();
+    checkMembershipStatus();
   }, []);
+
+  const checkMembershipStatus = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const userMetadata = session.user.user_metadata;
+        const membershipStatus = userMetadata?.membership_status;
+        const hasPaidMembership = userMetadata?.has_paid_membership;
+        setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true);
+      } else {
+        setHasProMembership(false);
+      }
+    } catch (error) {
+      console.error('Error checking membership status:', error);
+      setHasProMembership(false);
+    }
+  };
+
+  const handleApplyClick = (commission: Commission) => {
+    if (!hasProMembership) {
+      router.push('/pricing');
+      return;
+    }
+    window.location.href = `mailto:${commission.contact_email}?subject=Application for ${commission.title}`;
+  };
 
   const fetchCommissions = async () => {
     try {
@@ -236,7 +266,7 @@ export default function CommissionsPage() {
                               </span>
                               <button 
                                 className={styles.applyButton}
-                                onClick={() => window.location.href = `mailto:${commission.contact_email}?subject=Application for ${commission.title}`}
+                                onClick={() => handleApplyClick(commission)}
                               >
                                 Apply
                               </button>
