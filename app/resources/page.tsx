@@ -3,13 +3,79 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Resources.module.css';
 
+interface Article {
+  id: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  date: string;
+  author: string;
+  readTime: string;
+  user_id: string;
+  content?: string;
+}
+
 export default function ResourcesPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingMediums, setTrendingMediums] = useState<string[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [articleLoading, setArticleLoading] = useState(false);
+
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setCurrentUserId(session?.user?.id || null);
+    };
+    getCurrentUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        setArticlesLoading(true);
+        const response = await fetch('/api/articles');
+        
+        if (response.ok) {
+          const data = await response.json();
+          const fetchedArticles = (data.articles || []).map((article: any) => ({
+            id: article.id,
+            title: article.title,
+            excerpt: article.excerpt,
+            category: article.category,
+            date: new Date(article.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            author: article.author,
+            readTime: article.read_time || '5 min read',
+            user_id: article.user_id,
+          }));
+          setArticles(fetchedArticles);
+        } else {
+          console.error('[Resources] Failed to fetch articles:', response.status);
+          setArticles([]);
+        }
+      } catch (error) {
+        console.error('[Resources] Error fetching articles:', error);
+        setArticles([]);
+      } finally {
+        setArticlesLoading(false);
+      }
+    };
+
+    fetchArticles();
+  }, []);
 
   useEffect(() => {
     const fetchTrendingMediums = async () => {
@@ -66,68 +132,50 @@ export default function ResourcesPage() {
     fetchTrendingMediums();
   }, []);
 
-  const articles = [
-    {
-      id: 1,
-      title: '10 Marketing Strategies for Artists in 2025',
-      excerpt: 'Learn how to effectively market your artwork and build your brand in the digital age. Discover proven strategies that work for both emerging and established artists.',
-      category: 'Marketing',
-      date: 'March 15, 2025',
-      author: 'Sarah Johnson',
-      readTime: '5 min read',
-    },
-    {
-      id: 2,
-      title: 'Mastering Color Theory: A Comprehensive Guide',
-      excerpt: 'A detailed guide to understanding and applying color theory in your artwork. From basic principles to advanced techniques, this resource covers everything you need to know.',
-      category: 'Techniques',
-      date: 'March 10, 2025',
-      author: 'Michael Chen',
-      readTime: '8 min read',
-    },
-    {
-      id: 3,
-      title: 'Building Your Art Business: Essential Tips',
-      excerpt: 'Essential tips for turning your passion into a sustainable business. Learn about pricing, contracts, client management, and more.',
-      category: 'Business',
-      date: 'March 5, 2025',
-      author: 'Emma Williams',
-      readTime: '6 min read',
-    },
-    {
-      id: 4,
-      title: 'Digital Art Techniques Tutorial',
-      excerpt: 'Step-by-step tutorial on creating stunning digital artwork using modern tools. Perfect for artists transitioning from traditional to digital media.',
-      category: 'Tutorials',
-      date: 'February 28, 2025',
-      author: 'Alex Brown',
-      readTime: '12 min read',
-    },
-    {
-      id: 5,
-      title: 'Portrait Photography Tips for Artists',
-      excerpt: 'Learn how to capture reference photos that will enhance your portrait paintings. Professional photography techniques adapted for artists.',
-      category: 'Photography',
-      date: 'February 22, 2025',
-      author: 'David Lee',
-      readTime: '7 min read',
-    },
-    {
-      id: 6,
-      title: 'Understanding Art Contracts and Legal Basics',
-      excerpt: 'Navigate the legal aspects of selling art, including contracts, copyright, and licensing. Essential knowledge for professional artists.',
-      category: 'Business',
-      date: 'February 18, 2025',
-      author: 'Jennifer Martinez',
-      readTime: '10 min read',
-    },
-  ];
-
   const filteredArticles = articles.filter((article) =>
     article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     article.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
     article.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleReadMore = async (articleId: string) => {
+    setArticleLoading(true);
+    try {
+      const response = await fetch(`/api/articles/${articleId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const article = data.article;
+        setSelectedArticle({
+          id: article.id,
+          title: article.title,
+          excerpt: article.excerpt,
+          category: article.category,
+          date: new Date(article.created_at).toLocaleDateString('en-US', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          }),
+          author: article.author,
+          readTime: article.read_time || '5 min read',
+          user_id: article.user_id,
+          content: article.content,
+        });
+        // Scroll to top
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        console.error('Failed to fetch article:', response.status);
+      }
+    } catch (error) {
+      console.error('Error fetching article:', error);
+    } finally {
+      setArticleLoading(false);
+    }
+  };
+
+  const handleBackToList = () => {
+    setSelectedArticle(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <motion.div
@@ -147,46 +195,109 @@ export default function ResourcesPage() {
             </div>
           </ScrollAnimation>
 
-          <div className={styles.searchSection}>
-            <input
-              type="text"
-              placeholder="Search for:"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={styles.searchInput}
-            />
-          </div>
+          {!selectedArticle && (
+            <div className={styles.searchSection}>
+              <input
+                type="text"
+                placeholder="Search for:"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={styles.searchInput}
+              />
+            </div>
+          )}
 
           <div className={styles.contentLayout}>
             <div className={styles.mainContent}>
-              <ScrollAnimation>
-                <div className={styles.articlesSection}>
-                  <h2 className={styles.sectionTitle}>Latest Articles</h2>
-                  <div className={styles.articlesList}>
-                    {filteredArticles.length > 0 ? (
-                      filteredArticles.map((article) => (
-                        <article key={article.id} className={styles.articleCard}>
-                          <div className={styles.articleHeader}>
-                            <span className={styles.articleCategory}>{article.category}</span>
-                            <span className={styles.articleDate}>{article.date}</span>
-                          </div>
-                          <h3 className={styles.articleTitle}>{article.title}</h3>
-                          <p className={styles.articleExcerpt}>{article.excerpt}</p>
-                          <div className={styles.articleFooter}>
-                            <div className={styles.articleMeta}>
-                              <span className={styles.articleAuthor}>By {article.author}</span>
-                              <span className={styles.articleReadTime}>{article.readTime}</span>
-                            </div>
-                            <button className={styles.readMoreButton}>Read More</button>
-                          </div>
-                        </article>
-                      ))
+              {selectedArticle ? (
+                <ScrollAnimation>
+                  <div className={styles.articleDetail}>
+                    <button 
+                      onClick={handleBackToList}
+                      className={styles.backButton}
+                    >
+                      ← Back to Articles
+                    </button>
+                    
+                    {articleLoading ? (
+                      <p className={styles.loadingText}>Loading article...</p>
                     ) : (
-                      <p className={styles.noResults}>No articles found matching your search.</p>
+                      <>
+                        <div className={styles.articleDetailHeader}>
+                          <span className={styles.articleCategory}>{selectedArticle.category}</span>
+                          <span className={styles.articleDate}>{selectedArticle.date}</span>
+                        </div>
+                        <h1 className={styles.articleDetailTitle}>{selectedArticle.title}</h1>
+                        <div className={styles.articleDetailMeta}>
+                          <span className={styles.articleAuthor}>By {selectedArticle.author}</span>
+                          <span className={styles.articleReadTime}>{selectedArticle.readTime}</span>
+                          {currentUserId === selectedArticle.user_id && (
+                            <Link 
+                              href={`/resources/edit-article/${selectedArticle.id}`}
+                              className={styles.editButton}
+                            >
+                              Edit Article
+                            </Link>
+                          )}
+                        </div>
+                        <div className={styles.articleDetailContent}>
+                          {selectedArticle.content?.split('\n').map((paragraph, index) => (
+                            paragraph.trim() && (
+                              <p key={index}>{paragraph}</p>
+                            )
+                          ))}
+                        </div>
+                      </>
                     )}
                   </div>
-                </div>
-              </ScrollAnimation>
+                </ScrollAnimation>
+              ) : (
+                <ScrollAnimation>
+                  <div className={styles.articlesSection}>
+                    <h2 className={styles.sectionTitle}>Latest Articles</h2>
+                    <div className={styles.articlesList}>
+                      {articlesLoading ? (
+                        <p className={styles.loadingText}>Loading articles...</p>
+                      ) : filteredArticles.length > 0 ? (
+                        filteredArticles.map((article) => (
+                          <article key={article.id} className={styles.articleCard}>
+                            <div className={styles.articleHeader}>
+                              <span className={styles.articleCategory}>{article.category}</span>
+                              <span className={styles.articleDate}>{article.date}</span>
+                            </div>
+                            <h3 className={styles.articleTitle}>{article.title}</h3>
+                            <p className={styles.articleExcerpt}>{article.excerpt}</p>
+                            <div className={styles.articleFooter}>
+                              <div className={styles.articleMeta}>
+                                <span className={styles.articleAuthor}>By {article.author}</span>
+                                <span className={styles.articleReadTime}>{article.readTime}</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                                {currentUserId === article.user_id && (
+                                  <Link 
+                                    href={`/resources/edit-article/${article.id}`}
+                                    className={styles.editButton}
+                                  >
+                                    Edit
+                                  </Link>
+                                )}
+                                <button 
+                                  className={styles.readMoreButton}
+                                  onClick={() => handleReadMore(article.id)}
+                                >
+                                  Read More
+                                </button>
+                              </div>
+                            </div>
+                          </article>
+                        ))
+                      ) : (
+                        <p className={styles.noResults}>No articles found matching your search.</p>
+                      )}
+                    </div>
+                  </div>
+                </ScrollAnimation>
+              )}
             </div>
 
             <aside className={styles.sidebar}>

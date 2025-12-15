@@ -36,20 +36,13 @@ CREATE POLICY "Anyone can read articles"
   FOR SELECT
   USING (true);
 
--- Authenticated users with pro membership can create articles
-CREATE POLICY "Pro users can create articles"
+-- Authenticated users can create articles (membership check is handled in API route)
+CREATE POLICY "Authenticated users can create articles"
   ON articles
   FOR INSERT
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM auth.users
-      WHERE auth.users.id = articles.user_id
-      AND (
-        (auth.users.raw_user_meta_data->>'membership_status' = 'active')
-        OR
-        (auth.users.raw_user_meta_data->>'has_paid_membership' = 'true')
-      )
-    )
+    auth.role() = 'authenticated'
+    AND auth.uid() = user_id
   );
 
 -- Users can update their own articles

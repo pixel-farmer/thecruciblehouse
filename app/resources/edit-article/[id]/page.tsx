@@ -1,47 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '@/app/components/ScrollAnimation';
-import styles from './WriteArticle.module.css';
+import styles from '../../write-article/WriteArticle.module.css';
 
-export default function WriteArticlePage() {
+export default function EditArticlePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [checkingAccess, setCheckingAccess] = useState(true);
-
-  // Check membership on page load
-  useEffect(() => {
-    const checkMembership = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session || !session.user) {
-          router.push('/login');
-          return;
-        }
-
-        const userMetadata = session.user.user_metadata || {};
-        const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
-        const isPro = !!membershipStatus;
-
-        if (!isPro) {
-          router.push('/pricing');
-          return;
-        }
-
-        setCheckingAccess(false);
-      } catch (error) {
-        console.error('Error checking membership:', error);
-        router.push('/pricing');
-      }
-    };
-
-    checkMembership();
-  }, [router]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -57,6 +29,62 @@ export default function WriteArticlePage() {
     'Tutorials',
     'Photography',
   ];
+
+  // Check access and load article
+  useEffect(() => {
+    const checkAccessAndLoadArticle = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session || !session.user) {
+          router.push('/login');
+          return;
+        }
+
+        // Fetch the article
+        const response = await fetch(`/api/articles/${id}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            setError('Article not found.');
+            setLoading(false);
+            setCheckingAccess(false);
+            return;
+          }
+          throw new Error('Failed to fetch article');
+        }
+
+        const data = await response.json();
+        const article = data.article;
+
+        // Check if user is the owner
+        if (article.user_id !== session.user.id) {
+          setError('You do not have permission to edit this article.');
+          setLoading(false);
+          setCheckingAccess(false);
+          return;
+        }
+
+        // Pre-fill form with existing data
+        setFormData({
+          title: article.title || '',
+          excerpt: article.excerpt || '',
+          category: article.category || '',
+          content: article.content || '',
+        });
+
+        setLoading(false);
+        setCheckingAccess(false);
+      } catch (error) {
+        console.error('Error checking access:', error);
+        setError('An error occurred while loading the article.');
+        setLoading(false);
+        setCheckingAccess(false);
+      }
+    };
+
+    checkAccessAndLoadArticle();
+  }, [id, router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -85,31 +113,15 @@ export default function WriteArticlePage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session || !session.user) {
-        setError('You must be logged in to post an article.');
+        setError('You must be logged in to edit an article.');
         setIsSubmitting(false);
         return;
       }
-
-      const userMetadata = session.user.user_metadata || {};
-      const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
-      const isPro = !!membershipStatus;
-
-      if (!isPro) {
-        setError('Pro membership required to post articles. Please upgrade your membership.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      const author = userMetadata.display_name || 
-                    userMetadata.full_name || 
-                    userMetadata.name || 
-                    session.user.email?.split('@')[0] || 
-                    'Anonymous';
 
       const readTime = calculateReadTime(formData.content);
 
-      const response = await fetch('/api/articles', {
-        method: 'POST',
+      const response = await fetch(`/api/articles/${id}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
@@ -119,7 +131,6 @@ export default function WriteArticlePage() {
           excerpt: formData.excerpt,
           category: formData.category,
           content: formData.content,
-          author,
           readTime,
         }),
       });
@@ -127,7 +138,7 @@ export default function WriteArticlePage() {
       const data = await response.json();
 
       if (!response.ok) {
-        const errorMessage = data.error || 'Failed to post article';
+        const errorMessage = data.error || 'Failed to update article';
         const errorDetails = data.details ? ` ${data.details}` : '';
         const errorCode = data.code ? ` (Code: ${data.code})` : '';
         throw new Error(`${errorMessage}${errorDetails}${errorCode}`);
@@ -140,18 +151,18 @@ export default function WriteArticlePage() {
         router.push('/resources');
       }, 2000);
     } catch (err: any) {
-      console.error('Error posting article:', err);
-      setError(err.message || 'An error occurred while posting your article. Please try again.');
+      console.error('Error updating article:', err);
+      setError(err.message || 'An error occurred while updating your article. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (checkingAccess) {
+  if (checkingAccess || loading) {
     return (
       <div className={styles.postArticle}>
         <div className={styles.container}>
-          <div className={styles.loading}>Checking access...</div>
+          <div className={styles.loading}>{loading ? 'Loading article...' : 'Checking access...'}</div>
         </div>
       </div>
     );
@@ -162,9 +173,9 @@ export default function WriteArticlePage() {
         <div className={styles.container}>
           <ScrollAnimation>
             <div className={styles.header}>
-              <h1 className={styles.mainTitle}>Post an Article</h1>
+              <h1 className={styles.mainTitle}>Edit Article</h1>
               <p className={styles.subtitle}>
-                Share your knowledge and insights with the art community. Write an article that will help fellow artists grow and learn.
+                Update your article content and information.
               </p>
             </div>
           </ScrollAnimation>
@@ -173,7 +184,7 @@ export default function WriteArticlePage() {
             <div className={styles.formContainer}>
               {success && (
                 <div className={styles.successMessage}>
-                  <p>✓ Your article has been posted successfully! Redirecting to Resources page...</p>
+                  <p>✓ Your article has been updated successfully! Redirecting to Resources page...</p>
                 </div>
               )}
 
@@ -269,7 +280,7 @@ export default function WriteArticlePage() {
                     className={styles.submitButton}
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Posting...' : 'Post Article'}
+                    {isSubmitting ? 'Updating...' : 'Update Article'}
                   </button>
                 </div>
               </form>
