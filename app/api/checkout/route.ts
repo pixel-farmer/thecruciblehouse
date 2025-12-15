@@ -14,19 +14,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Create product first, then create checkout session
+    const product = await stripe.products.create({
+      name: artworkTitle,
+      description: `Purchase of ${artworkTitle}`,
+    });
+
+    const price = await stripe.prices.create({
+      product: product.id,
+      currency: 'usd',
+      unit_amount: priceInCents,
+    });
+
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: artworkTitle,
-              description: `Purchase of ${artworkTitle}`,
-            },
-            unit_amount: priceInCents, // Price in cents
-          },
+          price: price.id,
           quantity: 1,
         },
       ],
