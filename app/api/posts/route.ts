@@ -169,16 +169,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { content, userName, userHandle, userAvatar, groupId } = body;
+    const { content, userName, userHandle, userAvatar, groupId, imageUrl } = body;
 
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    // Content or image is required
+    if ((!content || typeof content !== 'string' || content.trim().length === 0) && !imageUrl) {
       return NextResponse.json(
-        { error: 'Post content is required' },
+        { error: 'Post content or image is required' },
         { status: 400 }
       );
     }
 
-    if (content.length > 300) {
+    // Validate content length if provided
+    if (content && content.length > 300) {
       return NextResponse.json(
         { error: 'Post content must be 300 characters or less' },
         { status: 400 }
@@ -239,20 +241,37 @@ export async function POST(request: NextRequest) {
       .from('community_posts')
       .insert({
         user_id: userId,
-        content: content.trim(),
+        content: content ? content.trim() : null,
         user_name: finalUserName,
         user_handle: finalUserHandle,
         user_avatar: finalUserAvatar,
         group_id: groupId || null, // Set group_id if provided, otherwise null for general posts
+        image_url: imageUrl || null, // Add image URL if provided
       })
       .select()
       .single();
 
     if (error) {
       console.error('[posts] Error creating post:', error);
+      console.error('[posts] Error code:', error.code);
+      console.error('[posts] Error message:', error.message);
+      console.error('[posts] Error details:', error.details);
+      console.error('[posts] Error hint:', error.hint);
+      
+      // Check if it's a NOT NULL constraint violation
+      if (error.message?.includes('null value in column') || error.code === '23502') {
+        return NextResponse.json(
+          { 
+            error: 'Database constraint error', 
+            details: 'The content column may still have a NOT NULL constraint. Please run the migration to make it nullable.',
+            hint: error.message 
+          },
+          { status: 500 }
+        );
+      }
       
       // Check if it's an RLS policy violation
-      if (error.code === '42501' || error.message.includes('permission denied')) {
+      if (error.code === '42501' || error.message?.includes('permission denied')) {
         return NextResponse.json(
           { error: 'You do not have permission to create posts. Please ensure you are logged in.' },
           { status: 403 }
@@ -260,7 +279,12 @@ export async function POST(request: NextRequest) {
       }
       
       return NextResponse.json(
-        { error: 'Failed to create post', details: error.message },
+        { 
+          error: 'Failed to create post', 
+          details: error.message || 'Unknown database error',
+          code: error.code,
+          hint: error.hint
+        },
         { status: 500 }
       );
     }
@@ -268,8 +292,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ post: data, success: true }, { status: 201 });
   } catch (error) {
     console.error('[posts] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('[posts] Error stack:', errorStack);
+    
     return NextResponse.json(
-      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { 
+        error: 'Internal server error', 
+        details: errorMessage,
+        ...(errorStack && { stack: errorStack })
+      },
       { status: 500 }
     );
   }
@@ -373,7 +405,7 @@ export async function DELETE(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, content } = body;
+    const { id, content, imageUrl } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -382,14 +414,16 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    // Content or image is required
+    if ((!content || typeof content !== 'string' || content.trim().length === 0) && !imageUrl) {
       return NextResponse.json(
-        { error: 'Post content is required' },
+        { error: 'Post content or image is required' },
         { status: 400 }
       );
     }
 
-    if (content.length > 300) {
+    // Validate content length if provided
+    if (content && content.length > 300) {
       return NextResponse.json(
         { error: 'Post content must be 300 characters or less' },
         { status: 400 }
@@ -415,9 +449,17 @@ export async function PATCH(request: NextRequest) {
     const userId = user.id;
 
     // Update the post (RLS will ensure user can only update their own posts)
+    const updateData: any = {};
+    if (content !== undefined) {
+      updateData.content = content ? content.trim() : null;
+    }
+    if (imageUrl !== undefined) {
+      updateData.image_url = imageUrl || null;
+    }
+
     const { data, error } = await supabase
       .from('community_posts')
-      .update({ content: content.trim() })
+      .update(updateData)
       .eq('id', id)
       .eq('user_id', userId)
       .select()

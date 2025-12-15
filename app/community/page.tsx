@@ -21,6 +21,9 @@ function CommunityPageContent() {
   const [loading, setLoading] = useState(true);
   const [showSignInMessage, setShowSignInMessage] = useState(false);
   const [postText, setPostText] = useState('');
+  const [postImage, setPostImage] = useState<string | null>(null);
+  const [postImageFile, setPostImageFile] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [userInitials, setUserInitials] = useState('U');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userName, setUserName] = useState('');
@@ -783,7 +786,7 @@ function CommunityPageContent() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingPostId || !editingPostContent.trim()) {
+    if (!editingPostId) {
       return;
     }
 
@@ -823,8 +826,137 @@ function CommunityPageContent() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please select a JPEG, PNG, WebP, or GIF image');
+      return;
+    }
+
+    setUploadingImage(true);
+    setPostImageFile(file);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to upload images');
+        setUploadingImage(false);
+        setPostImageFile(null);
+        return;
+      }
+
+      // Resize image to a reasonable size (max 1200px width, maintain aspect ratio)
+      const maxWidth = 1200;
+      const maxSize = 1 * 1024 * 1024; // 1MB target size
+      
+      const resizeImage = (file: File): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // Resize if larger than max width
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Could not get canvas context'));
+              return;
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to blob with quality compression
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // If still too large, compress more
+                if (blob.size > maxSize) {
+                  canvas.toBlob((compressedBlob) => {
+                    resolve(compressedBlob || blob);
+                  }, 'image/jpeg', 0.7);
+                } else {
+                  resolve(blob);
+                }
+              } else {
+                reject(new Error('Failed to convert image'));
+              }
+            }, 'image/jpeg', 0.85);
+          };
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = URL.createObjectURL(file);
+        });
+      };
+
+      const resizedBlob = await resizeImage(file);
+      const fileExt = 'jpg'; // Always use jpg after compression
+      const fileName = `posts/${session.user.id}-${Date.now()}.${fileExt}`;
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('event-images')
+        .upload(fileName, resizedBlob, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        console.error('Upload error details:', JSON.stringify(uploadError, null, 2));
+        
+        // Provide more helpful error messages
+        let errorMessage = 'Failed to upload image. Please try again.';
+        if (uploadError.message?.includes('new row violates row-level security') || uploadError.message?.includes('permission denied')) {
+          errorMessage = 'Permission denied. The storage bucket may not be configured correctly. Please contact support.';
+        } else if (uploadError.message?.includes('The resource already exists')) {
+          errorMessage = 'An image with this name already exists. Please try again.';
+        } else if (uploadError.message) {
+          errorMessage = `Upload failed: ${uploadError.message}`;
+        }
+        
+        alert(errorMessage);
+        setUploadingImage(false);
+        setPostImageFile(null);
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(fileName);
+
+      if (urlData?.publicUrl) {
+        setPostImage(urlData.publicUrl);
+      } else {
+        alert('Failed to get image URL');
+        setPostImageFile(null);
+      }
+    } catch (err: any) {
+      console.error('Image upload error:', err);
+      alert(err.message || 'Failed to upload image');
+      setPostImageFile(null);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setPostImage(null);
+    setPostImageFile(null);
+  };
+
   const handlePostSubmit = async () => {
-    if (!postText.trim() || !userId || isPosting) return;
+    if ((!postText.trim() && !postImage) || !userId || isPosting) return;
 
     try {
       setIsPosting(true);
@@ -853,6 +985,7 @@ function CommunityPageContent() {
           userHandle,
           userAvatar: userAvatar || userInitials,
           groupId: groupId,
+          imageUrl: postImage,
         }),
       });
 
@@ -869,12 +1002,50 @@ function CommunityPageContent() {
           await fetchPosts();
         }
         setPostText('');
+        setPostImage(null);
+        setPostImageFile(null);
         // Refresh recent members since user activity changed
         await fetchRecentMembers();
       } else {
-        const error = await response.json();
-        console.error('Failed to create post:', error);
-        alert('Failed to post. Please try again.');
+        let errorMessage = 'Failed to post. Please try again.';
+        
+        try {
+          const errorData = await response.json();
+          console.error('Failed to create post:', errorData);
+          console.error('Response status:', response.status);
+          
+          // Provide more helpful error messages
+          if (errorData?.error) {
+            errorMessage = errorData.error;
+            if (errorData.details) {
+              errorMessage += ` ${errorData.details}`;
+            }
+          } else if (response.status === 400) {
+            errorMessage = 'Invalid post data. Please check your post content and try again.';
+          } else if (response.status === 401) {
+            errorMessage = 'You must be logged in to post. Please log in and try again.';
+          } else if (response.status === 403) {
+            errorMessage = 'Permission denied. You do not have permission to create posts.';
+          } else {
+            errorMessage = `Failed to post (status: ${response.status}). Please try again.`;
+          }
+        } catch (parseError) {
+          // If JSON parsing fails, use status-based error message
+          console.error('Failed to parse error response:', parseError);
+          console.error('Response status:', response.status);
+          
+          if (response.status === 400) {
+            errorMessage = 'Invalid post data. Please check your post content and try again.';
+          } else if (response.status === 401) {
+            errorMessage = 'You must be logged in to post. Please log in and try again.';
+          } else if (response.status === 403) {
+            errorMessage = 'Permission denied. You do not have permission to create posts.';
+          } else {
+            errorMessage = `Failed to post (status: ${response.status}). Please try again.`;
+          }
+        }
+        
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('Error creating post:', error);
@@ -1204,9 +1375,95 @@ function CommunityPageContent() {
                           onChange={(e) => setPostText(e.target.value)}
                           maxLength={300}
                         />
+                        {postImage && (
+                          <div style={{ 
+                            position: 'relative', 
+                            marginTop: '12px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--border-color)',
+                          }}>
+                            <Image
+                              src={postImage}
+                              alt="Post preview"
+                              width={500}
+                              height={300}
+                              style={{
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: '400px',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                            <button
+                              onClick={handleRemoveImage}
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '20px',
+                                lineHeight: 1,
+                                fontFamily: 'var(--font-inter)',
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
                         <div className={styles.composerActions}>
                           <div className={styles.composerIcons}>
-                            {/* Icons can be added here later (image, etc.) */}
+                            <label
+                              style={{
+                                cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px',
+                                borderRadius: '50%',
+                                transition: 'background-color 0.2s ease',
+                                opacity: uploadingImage ? 0.5 : 1,
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!uploadingImage) {
+                                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                                onChange={handleImageUpload}
+                                disabled={uploadingImage}
+                                style={{ display: 'none' }}
+                              />
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ color: '#ff6622' }}
+                              >
+                                <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                              </svg>
+                            </label>
                           </div>
                           <div className={styles.composerRight}>
                             {postText.length > 0 && (
@@ -1216,7 +1473,7 @@ function CommunityPageContent() {
                             )}
                             <button 
                               className={styles.postButton}
-                              disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
+                              disabled={(postText.trim().length === 0 && !postImage) || isPosting || uploadingImage || !isLoggedIn}
                               onClick={handlePostSubmit}
                             >
                               {isPosting ? 'Posting...' : 'Post'}
@@ -1376,7 +1633,33 @@ function CommunityPageContent() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <p className={styles.postText}>{post.content}</p>
+                                  <>
+                                    {post.content && (
+                                      <p className={styles.postText}>{post.content}</p>
+                                    )}
+                                    {post.image_url && (
+                                      <div style={{
+                                        marginTop: '12px',
+                                        borderRadius: '12px',
+                                        overflow: 'hidden',
+                                        border: '1px solid var(--border-color)',
+                                      }}>
+                                        <Image
+                                          src={post.image_url}
+                                          alt="Post image"
+                                          width={500}
+                                          height={300}
+                                          style={{
+                                            width: '100%',
+                                            height: 'auto',
+                                            maxHeight: '500px',
+                                            objectFit: 'contain',
+                                            display: 'block',
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>
@@ -1554,9 +1837,95 @@ function CommunityPageContent() {
                           onChange={(e) => setPostText(e.target.value)}
                           maxLength={300}
                         />
+                        {postImage && (
+                          <div style={{ 
+                            position: 'relative', 
+                            marginTop: '12px',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            border: '1px solid var(--border-color)',
+                          }}>
+                            <Image
+                              src={postImage}
+                              alt="Post preview"
+                              width={500}
+                              height={300}
+                              style={{
+                                width: '100%',
+                                height: 'auto',
+                                maxHeight: '400px',
+                                objectFit: 'contain',
+                                display: 'block',
+                              }}
+                            />
+                            <button
+                              onClick={handleRemoveImage}
+                              style={{
+                                position: 'absolute',
+                                top: '8px',
+                                right: '8px',
+                                background: 'rgba(0, 0, 0, 0.6)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: '32px',
+                                height: '32px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '20px',
+                                lineHeight: 1,
+                                fontFamily: 'var(--font-inter)',
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
                         <div className={styles.composerActions}>
                           <div className={styles.composerIcons}>
-                            {/* Icons can be added here later (image, etc.) */}
+                            <label
+                              style={{
+                                cursor: uploadingImage ? 'not-allowed' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '8px',
+                                borderRadius: '50%',
+                                transition: 'background-color 0.2s ease',
+                                opacity: uploadingImage ? 0.5 : 1,
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!uploadingImage) {
+                                  e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                              }}
+                            >
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                                onChange={handleImageUpload}
+                                disabled={uploadingImage}
+                                style={{ display: 'none' }}
+                              />
+                              <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{ color: '#ff6622' }}
+                              >
+                                <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                              </svg>
+                            </label>
                           </div>
                           <div className={styles.composerRight}>
                             {postText.length > 0 && (
@@ -1566,7 +1935,7 @@ function CommunityPageContent() {
                             )}
                             <button 
                               className={styles.postButton}
-                              disabled={postText.trim().length === 0 || isPosting || !isLoggedIn}
+                              disabled={(postText.trim().length === 0 && !postImage) || isPosting || uploadingImage || !isLoggedIn}
                               onClick={handlePostSubmit}
                             >
                               {isPosting ? 'Posting...' : 'Post'}
@@ -1724,7 +2093,33 @@ function CommunityPageContent() {
                                   </div>
                                 </div>
                               ) : (
-                                <p className={styles.postText}>{post.content}</p>
+                                <>
+                                  {post.content && (
+                                    <p className={styles.postText}>{post.content}</p>
+                                  )}
+                                  {post.image_url && (
+                                    <div style={{
+                                      marginTop: '12px',
+                                      borderRadius: '12px',
+                                      overflow: 'hidden',
+                                      border: '1px solid var(--border-color)',
+                                    }}>
+                                      <Image
+                                        src={post.image_url}
+                                        alt="Post image"
+                                        width={500}
+                                        height={300}
+                                        style={{
+                                          width: '100%',
+                                          height: 'auto',
+                                          maxHeight: '500px',
+                                          objectFit: 'contain',
+                                          display: 'block',
+                                        }}
+                                      />
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>
