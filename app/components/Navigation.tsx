@@ -13,15 +13,19 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCommissionsDropdownOpen, setIsCommissionsDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
   const [isPro, setIsPro] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [conversations, setConversations] = useState<any[]>([]);
   const isLoggingOutRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const commissionsDropdownRef = useRef<HTMLLIElement>(null);
   const commissionsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check initial session
@@ -105,6 +109,45 @@ export default function Navigation() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Fetch unread message count
+  const fetchUnreadCount = async () => {
+    if (!isLoggedIn) return;
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/conversations', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const conversations = data.conversations || [];
+        setConversations(conversations);
+        const totalUnread = conversations.reduce((sum: number, conv: any) => sum + (conv.unreadCount || 0), 0);
+        setUnreadCount(totalUnread);
+      }
+    } catch (error) {
+      console.error('Error fetching unread count:', error);
+    }
+  };
+
+  // Fetch unread count when logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchUnreadCount();
+      // Poll for updates every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      return () => clearInterval(interval);
+    } else {
+      setUnreadCount(0);
+      setConversations([]);
+    }
+  }, [isLoggedIn]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -118,9 +161,12 @@ export default function Navigation() {
         }
         setIsCommissionsDropdownOpen(false);
       }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
     };
 
-    if (isDropdownOpen || isCommissionsDropdownOpen) {
+    if (isDropdownOpen || isCommissionsDropdownOpen || isNotificationsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
@@ -130,7 +176,7 @@ export default function Navigation() {
         clearTimeout(commissionsDropdownTimeoutRef.current);
       }
     };
-  }, [isDropdownOpen, isCommissionsDropdownOpen]);
+  }, [isDropdownOpen, isCommissionsDropdownOpen, isNotificationsOpen]);
 
   const handleLogout = () => {
     // Set ref flag immediately (doesn't trigger re-render)
@@ -486,42 +532,203 @@ export default function Navigation() {
                   </svg>
                 </Link>
                 
-                {/* Bell Icon */}
-                <button
-                  onClick={() => setIsMenuOpen(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    padding: '0.5rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--text-dark)',
-                    transition: 'opacity 0.3s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = '0.7';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = '1';
-                  }}
-                  aria-label="Notifications"
-                >
-                  <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                  </svg>
-                </button>
+                {/* Bell Icon with Notifications */}
+                {isLoggedIn && (
+                  <div ref={notificationsRef} style={{ position: 'relative' }}>
+                    <button
+                      onClick={() => {
+                        setIsNotificationsOpen(!isNotificationsOpen);
+                        setIsMenuOpen(false);
+                        if (!isNotificationsOpen) {
+                          fetchUnreadCount();
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '0.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--text-dark)',
+                        transition: 'opacity 0.3s ease',
+                        position: 'relative',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.opacity = '0.7';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      aria-label="Notifications"
+                    >
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                      </svg>
+                      {unreadCount > 0 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '4px',
+                            right: '4px',
+                            backgroundColor: '#ff6622',
+                            color: 'white',
+                            borderRadius: '10px',
+                            padding: '2px 6px',
+                            fontSize: '0.7rem',
+                            fontWeight: '600',
+                            minWidth: '18px',
+                            textAlign: 'center',
+                            lineHeight: '1.2',
+                          }}
+                        >
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </button>
+                    
+                    {/* Notifications Dropdown */}
+                    {isNotificationsOpen && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: 'calc(100% + 8px)',
+                          right: 0,
+                          backgroundColor: 'white',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                          minWidth: '320px',
+                          maxWidth: '400px',
+                          maxHeight: '500px',
+                          overflowY: 'auto',
+                          zIndex: 1001,
+                        }}
+                      >
+                        <div style={{ padding: '1rem', borderBottom: '1px solid #e0e0e0' }}>
+                          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+                            Notifications
+                          </h3>
+                        </div>
+                        <div>
+                          {conversations.filter((conv: any) => conv.unreadCount > 0).length === 0 ? (
+                            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-light)' }}>
+                              <p style={{ margin: 0 }}>No new notifications</p>
+                            </div>
+                          ) : (
+                            conversations
+                              .filter((conv: any) => conv.unreadCount > 0)
+                              .map((conv: any) => (
+                                <Link
+                                  key={conv.id}
+                                  href={`/messages?conversation=${conv.id}`}
+                                  onClick={() => setIsNotificationsOpen(false)}
+                                  style={{
+                                    display: 'block',
+                                    padding: '1rem',
+                                    borderBottom: '1px solid #f0f0f0',
+                                    textDecoration: 'none',
+                                    color: 'var(--text-dark)',
+                                    transition: 'background-color 0.2s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f9f9f9';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'white';
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div
+                                      style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'var(--accent-color)',
+                                        color: 'white',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {conv.otherUser.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                                          {conv.otherUser.name}
+                                        </span>
+                                        {conv.unreadCount > 0 && (
+                                          <span
+                                            style={{
+                                              backgroundColor: '#ff6622',
+                                              color: 'white',
+                                              borderRadius: '10px',
+                                              padding: '2px 6px',
+                                              fontSize: '0.7rem',
+                                              fontWeight: '600',
+                                              minWidth: '18px',
+                                              textAlign: 'center',
+                                            }}
+                                          >
+                                            {conv.unreadCount}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {conv.lastMessage && (
+                                        <p
+                                          style={{
+                                            margin: 0,
+                                            fontSize: '0.85rem',
+                                            color: 'var(--text-light)',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap',
+                                          }}
+                                        >
+                                          {conv.lastMessage.content}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </Link>
+                              ))
+                          )}
+                        </div>
+                        {conversations.filter((conv: any) => conv.unreadCount > 0).length > 0 && (
+                          <div style={{ padding: '0.75rem', borderTop: '1px solid #e0e0e0', textAlign: 'center' }}>
+                            <Link
+                              href="/messages"
+                              onClick={() => setIsNotificationsOpen(false)}
+                              style={{
+                                color: 'var(--accent-color)',
+                                textDecoration: 'none',
+                                fontSize: '0.9rem',
+                                fontWeight: 500,
+                              }}
+                            >
+                              View all messages
+                            </Link>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
