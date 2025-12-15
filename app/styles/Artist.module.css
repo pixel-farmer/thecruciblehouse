@@ -122,6 +122,55 @@
   opacity: 0.9;
 }
 
+.heartButton {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  z-index: 10;
+}
+
+.heartButton:hover {
+  background: rgba(0, 0, 0, 0.7);
+  transform: scale(1.1);
+}
+
+.heartButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.heartButton svg {
+  transition: transform 0.2s ease;
+}
+
+.heartButton:hover svg {
+  transform: scale(1.1);
+}
+
+.heartCount {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+  font-family: var(--font-inter);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
 /* Lightbox Modal */
 .lightboxOverlay {
   position: fixed;

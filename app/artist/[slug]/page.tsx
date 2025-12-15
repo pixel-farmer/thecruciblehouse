@@ -18,6 +18,8 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isStartingConversation, setIsStartingConversation] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [artworkLikes, setArtworkLikes] = useState<Map<string, { isLiked: boolean; likeCount: number }>>(new Map());
+  const [likingArtworkId, setLikingArtworkId] = useState<string | null>(null);
 
   // Get current user ID
   useEffect(() => {
@@ -37,6 +39,36 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
         if (response.ok) {
           const data = await response.json();
           setArtist(data.artist);
+          
+          // Fetch like status for all artwork
+          if (data.artist?.artwork && data.artist.artwork.length > 0) {
+            const likesMap = new Map();
+            const { data: { session } } = await supabase.auth.getSession();
+            
+            await Promise.all(
+              data.artist.artwork.map(async (artwork: any) => {
+                try {
+                  const likeResponse = await fetch(`/api/artwork/${artwork.id}/like`, {
+                    headers: session?.access_token ? {
+                      'Authorization': `Bearer ${session.access_token}`
+                    } : {}
+                  });
+                  if (likeResponse.ok) {
+                    const likeData = await likeResponse.json();
+                    likesMap.set(artwork.id, {
+                      isLiked: likeData.isLiked || false,
+                      likeCount: likeData.likeCount || 0
+                    });
+                  }
+                } catch (error) {
+                  console.error(`Error fetching likes for artwork ${artwork.id}:`, error);
+                  likesMap.set(artwork.id, { isLiked: false, likeCount: 0 });
+                }
+              })
+            );
+            
+            setArtworkLikes(likesMap);
+          }
         } else if (response.status === 404) {
           router.push('/artist');
         }
@@ -109,6 +141,56 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
   const locationAndJoinDate = [location, joinDate ? `Joined ${joinDate}` : '']
     .filter(Boolean)
     .join(' • ');
+
+  // Handle liking/unliking artwork
+  const handleLikeArtwork = async (artworkId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening lightbox
+    
+    try {
+      setLikingArtworkId(artworkId);
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+
+      const currentLike = artworkLikes.get(artworkId);
+      const isCurrentlyLiked = currentLike?.isLiked || false;
+
+      const response = await fetch(`/api/artwork/${artworkId}/like`, {
+        method: isCurrentlyLiked ? 'DELETE' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setArtworkLikes(prev => {
+          const newMap = new Map(prev);
+          newMap.set(artworkId, {
+            isLiked: data.liked,
+            likeCount: data.likeCount || 0
+          });
+          return newMap;
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to like artwork:', errorData);
+        if (response.status === 401) {
+          router.push('/login');
+        } else {
+          alert(errorData.error || 'Failed to like artwork. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error liking artwork:', error);
+    } finally {
+      setLikingArtworkId(null);
+    }
+  };
 
   // Handle starting a conversation
   const handleStartConversation = async () => {
@@ -414,6 +496,28 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                         <span>Artwork</span>
                       </div>
                     )}
+                    <button
+                      className={styles.heartButton}
+                      onClick={(e) => handleLikeArtwork(artwork.id, e)}
+                      disabled={likingArtworkId === artwork.id}
+                      aria-label={artworkLikes.get(artwork.id)?.isLiked ? 'Unlike artwork' : 'Like artwork'}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'none'}
+                        stroke={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'white'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                      </svg>
+                      {artworkLikes.get(artwork.id)?.likeCount > 0 && (
+                        <span className={styles.heartCount}>{artworkLikes.get(artwork.id)?.likeCount}</span>
+                      )}
+                    </button>
                     <div className={styles.galleryOverlay}>
                       {artwork.title && <h3>{artwork.title}</h3>}
                       {artwork.medium && <p>{artwork.medium}</p>}

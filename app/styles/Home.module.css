@@ -131,6 +131,26 @@
   transition: var(--transition);
 }
 
+.featuredImageContainer {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.featuredImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.featuredItem:hover .featuredImage {
+  transform: scale(1.05);
+}
+
 .featuredImagePlaceholder {
   width: 100%;
   height: 400px;
@@ -142,6 +162,7 @@
   font-size: 1.1rem;
   margin-bottom: 20px;
   transition: var(--transition);
+  border-radius: 8px;
 }
 
 .featuredItem:hover .featuredImagePlaceholder {
@@ -159,6 +180,7 @@
 .featuredInfo p {
   color: var(--text-light);
   font-size: 0.95rem;
+  margin: 0;
 }
 
 .recentArtists {
@@ -264,7 +286,8 @@
 }
 
 .loadingText,
-.noArtistsText {
+.noArtistsText,
+.noArtworkText {
   text-align: center;
   color: var(--text-light);
   font-size: 1.1rem;

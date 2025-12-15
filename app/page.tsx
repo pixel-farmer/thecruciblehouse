@@ -17,10 +17,19 @@ interface RecentArtist {
   discipline: string | null;
 }
 
+interface FeaturedArtwork {
+  id: string;
+  image_url: string;
+  title: string | null;
+  artistName: string;
+}
+
 export default function Home() {
   const router = useRouter();
   const [recentArtists, setRecentArtists] = useState<RecentArtist[]>([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
+  const [featuredArtwork, setFeaturedArtwork] = useState<FeaturedArtwork[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
 
   useEffect(() => {
     // Check if we have authentication tokens in the URL hash
@@ -60,7 +69,23 @@ export default function Home() {
       }
     };
 
+    // Fetch featured artwork (top 3 most liked)
+    const fetchFeaturedArtwork = async () => {
+      try {
+        const response = await fetch('/api/artwork/featured');
+        if (response.ok) {
+          const data = await response.json();
+          setFeaturedArtwork(data.featuredArtwork || []);
+        }
+      } catch (error) {
+        console.error('Error fetching featured artwork:', error);
+      } finally {
+        setLoadingFeatured(false);
+      }
+    };
+
     fetchRecentArtists();
+    fetchFeaturedArtwork();
   }, []);
 
   return (
@@ -136,41 +161,42 @@ export default function Home() {
           <ScrollAnimation>
             <h2 className={styles.sectionTitle}>Featured Works</h2>
           </ScrollAnimation>
-          <div className={styles.featuredGrid}>
-            <ScrollAnimation delay={0.1}>
-              <div className={styles.featuredItem}>
-                <div className={styles.featuredImagePlaceholder}>
-                  <span>Featured Artwork</span>
-                </div>
-                <div className={styles.featuredInfo}>
-                  <h3>Artwork Title</h3>
-                  <p>Medium • Year</p>
-                </div>
-              </div>
-            </ScrollAnimation>
-            <ScrollAnimation delay={0.2}>
-              <div className={styles.featuredItem}>
-                <div className={styles.featuredImagePlaceholder}>
-                  <span>Featured Artwork</span>
-                </div>
-                <div className={styles.featuredInfo}>
-                  <h3>Artwork Title</h3>
-                  <p>Medium • Year</p>
-                </div>
-              </div>
-            </ScrollAnimation>
-            <ScrollAnimation delay={0.3}>
-              <div className={styles.featuredItem}>
-                <div className={styles.featuredImagePlaceholder}>
-                  <span>Featured Artwork</span>
-                </div>
-                <div className={styles.featuredInfo}>
-                  <h3>Artwork Title</h3>
-                  <p>Medium • Year</p>
-                </div>
-              </div>
-            </ScrollAnimation>
-          </div>
+          {loadingFeatured ? (
+            <div className={styles.featuredGrid}>
+              <div className={styles.loadingText}>Loading featured artwork...</div>
+            </div>
+          ) : featuredArtwork.length > 0 ? (
+            <div className={styles.featuredGrid}>
+              {featuredArtwork.map((artwork, index) => (
+                <ScrollAnimation key={artwork.id} delay={index * 0.1}>
+                  <div className={styles.featuredItem}>
+                    {artwork.image_url ? (
+                      <div className={styles.featuredImageContainer}>
+                        <Image
+                          src={artwork.image_url}
+                          alt={artwork.title || 'Featured Artwork'}
+                          width={400}
+                          height={400}
+                          className={styles.featuredImage}
+                        />
+                      </div>
+                    ) : (
+                      <div className={styles.featuredImagePlaceholder}>
+                        <span>Featured Artwork</span>
+                      </div>
+                    )}
+                    <div className={styles.featuredInfo}>
+                      <h3>{artwork.artistName}</h3>
+                    </div>
+                  </div>
+                </ScrollAnimation>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.featuredGrid}>
+              <div className={styles.noArtworkText}>No featured artwork yet</div>
+            </div>
+          )}
         </div>
       </section>
     </motion.div>
