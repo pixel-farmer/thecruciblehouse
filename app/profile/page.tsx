@@ -1229,37 +1229,39 @@ export default function ProfilePage() {
                               }}>
                                 $8/month
                               </p>
-                              <button
-                                onClick={handleCancelSubscription}
-                                disabled={subscriptionActionLoading || !hasActiveMembership}
-                                style={{
-                                  padding: '0.5rem 1rem',
-                                  borderRadius: '6px',
-                                  backgroundColor: 'transparent',
-                                  color: '#ef4444',
-                                  border: '1px solid #ef4444',
-                                  fontFamily: 'var(--font-inter)',
-                                  fontSize: '0.875rem',
-                                  fontWeight: 500,
-                                  cursor: (subscriptionActionLoading || !hasActiveMembership) ? 'not-allowed' : 'pointer',
-                                  opacity: (subscriptionActionLoading || !hasActiveMembership) ? 0.5 : 1,
-                                  transition: 'all 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                  if (!subscriptionActionLoading && hasActiveMembership) {
-                                    e.currentTarget.style.backgroundColor = '#ef4444';
-                                    e.currentTarget.style.color = 'white';
-                                  }
-                                }}
-                                onMouseLeave={(e) => {
-                                  if (!subscriptionActionLoading && hasActiveMembership) {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '#ef4444';
-                                  }
-                                }}
-                              >
-                                {subscriptionActionLoading ? 'Processing...' : 'Cancel Subscription'}
-                              </button>
+                              {!subscriptionStatus?.subscription?.cancel_at_period_end && (
+                                <button
+                                  onClick={handleCancelSubscription}
+                                  disabled={subscriptionActionLoading || !hasActiveMembership}
+                                  style={{
+                                    padding: '0.5rem 1rem',
+                                    borderRadius: '6px',
+                                    backgroundColor: 'transparent',
+                                    color: '#ef4444',
+                                    border: '1px solid #ef4444',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontSize: '0.875rem',
+                                    fontWeight: 500,
+                                    cursor: (subscriptionActionLoading || !hasActiveMembership) ? 'not-allowed' : 'pointer',
+                                    opacity: (subscriptionActionLoading || !hasActiveMembership) ? 0.5 : 1,
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (!subscriptionActionLoading && hasActiveMembership) {
+                                      e.currentTarget.style.backgroundColor = '#ef4444';
+                                      e.currentTarget.style.color = 'white';
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (!subscriptionActionLoading && hasActiveMembership) {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                      e.currentTarget.style.color = '#ef4444';
+                                    }
+                                  }}
+                                >
+                                  {subscriptionActionLoading ? 'Processing...' : 'Cancel Subscription'}
+                                </button>
+                              )}
                             </div>
                             <div style={{
                               padding: '0.5rem 1rem',

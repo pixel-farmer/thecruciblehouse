@@ -106,19 +106,14 @@ export default function CommissionsPage() {
   };
 
   const handleApplyClick = async (commission: Commission) => {
-    // First check if user is signed in
+    // Check if user is signed in
     const { data: { session } } = await supabase.auth.getSession();
     if (!session || !session.user) {
       setShowSignInMessage(true);
       return;
     }
     
-    // Check if user is pro
-    if (!hasProMembership) {
-      router.push('/pricing');
-      return;
-    }
-    
+    // Free users can now apply for commissions
     window.location.href = `mailto:${commission.contact_email}?subject=Application for ${commission.title}`;
   };
 

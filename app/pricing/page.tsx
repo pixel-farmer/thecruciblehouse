@@ -32,18 +32,18 @@ export default function PricingPage() {
   };
 
   const freeFeatures = [
-    'Post articles',
     'Upload art',
     'Post on main community feed',
     'Join groups',
+    'Apply for commissions',
   ];
 
   const proFeatures = [
+    'Post articles',
     'Host a meetup',
     'Post an exhibit',
     'Create groups',
     'Post a job',
-    'Apply for commissions',
     'Search for artists near you on the map',
   ];
 
