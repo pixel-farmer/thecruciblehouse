@@ -166,6 +166,15 @@ export default function CommissionsPage() {
     return `${Math.floor(diffInSeconds / 2592000)} months ago`;
   };
 
+  // Helper function to create slug from name
+  const createSlug = (name: string | null | undefined): string => {
+    if (!name || typeof name !== 'string') return 'user';
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'user';
+  };
+
   const filteredCommissions = commissions.filter((commission) => {
     const matchesKeyword = commission.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
                           commission.description.toLowerCase().includes(searchKeyword.toLowerCase());
@@ -376,24 +385,48 @@ export default function CommissionsPage() {
                 <div className={styles.sidebarSection}>
                   <h3 className={styles.sidebarTitle}>What's Happening</h3>
                   <div className={styles.activityList}>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Genevieve</strong> posted a new commission request
-                      </p>
-                      <span className={styles.activityTime}>11 hours ago</span>
-                    </div>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Michael</strong> completed a portrait commission
-                      </p>
-                      <span className={styles.activityTime}>2 days ago</span>
-                    </div>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Sarah</strong> posted an update in the group
-                      </p>
-                      <span className={styles.activityTime}>3 days ago</span>
-                    </div>
+                    {loading ? (
+                      <div className={styles.activityItem}>
+                        <p className={styles.activityText}>Loading...</p>
+                      </div>
+                    ) : commissions.length === 0 ? (
+                      <div className={styles.activityItem}>
+                        <p className={styles.activityText} style={{ color: 'var(--text-light)' }}>
+                          No recent activity
+                        </p>
+                      </div>
+                    ) : (
+                      commissions.slice(0, 5).map((commission) => {
+                        const clientName = commission.client_name || 'Someone';
+                        const slug = createSlug(clientName);
+                        return (
+                          <div key={commission.id} className={styles.activityItem}>
+                            <p className={styles.activityText}>
+                              <Link 
+                                href={`/artist/${slug}`}
+                                style={{ 
+                                  textDecoration: 'none', 
+                                  color: 'inherit',
+                                  fontWeight: 600 
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.color = 'var(--accent-color)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.color = 'inherit';
+                                }}
+                              >
+                                <strong>{clientName}</strong>
+                              </Link>{' '}
+                              posted a new commission request
+                            </p>
+                            <span className={styles.activityTime}>
+                              {formatTimeAgo(commission.created_at)}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
               </ScrollAnimation>
