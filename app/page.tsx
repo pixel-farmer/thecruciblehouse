@@ -1,14 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import styles from './styles/Home.module.css';
 import ScrollAnimation from './components/ScrollAnimation';
 
+interface RecentArtist {
+  id: string;
+  slug: string;
+  name: string;
+  avatar_url: string | null;
+  initials: string;
+  discipline: string | null;
+}
+
 export default function Home() {
   const router = useRouter();
+  const [recentArtists, setRecentArtists] = useState<RecentArtist[]>([]);
+  const [loadingArtists, setLoadingArtists] = useState(true);
 
   useEffect(() => {
     // Check if we have authentication tokens in the URL hash
@@ -32,6 +44,25 @@ export default function Home() {
     }
   }, [router]);
 
+  useEffect(() => {
+    // Fetch recently joined artists
+    const fetchRecentArtists = async () => {
+      try {
+        const response = await fetch('/api/artists/recent');
+        if (response.ok) {
+          const data = await response.json();
+          setRecentArtists(data.artists || []);
+        }
+      } catch (error) {
+        console.error('Error fetching recent artists:', error);
+      } finally {
+        setLoadingArtists(false);
+      }
+    };
+
+    fetchRecentArtists();
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -39,16 +70,65 @@ export default function Home() {
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
     >
       <section className={styles.hero}>
+        <div className={styles.heatGradient}></div>
         <ScrollAnimation>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>The Crucible House</h1>
-            <p className={styles.heroSubtitle}>Where Art and Connections are Forged</p>
-            <p className={styles.heroSubtitle}>We’re building a space for artists to connect, share, and grow together. Check back soon!</p>
+            <p className={styles.heroSubtitle}>Where Art and Connections are Forged!</p>
             <Link href="/artist" className={styles.ctaButton}>
               View Artists
             </Link>
           </div>
         </ScrollAnimation>
+      </section>
+
+      <section className={styles.recentArtists}>
+        <div className={styles.container}>
+          <ScrollAnimation>
+            <h2 className={styles.sectionTitle}>Recently Joined Artists</h2>
+          </ScrollAnimation>
+          {loadingArtists ? (
+            <div className={styles.artistsGrid}>
+              <div className={styles.loadingText}>Loading artists...</div>
+            </div>
+          ) : recentArtists.length > 0 ? (
+            <div className={styles.artistsGrid}>
+              {recentArtists.map((artist, index) => (
+                <ScrollAnimation key={artist.id} delay={index * 0.1}>
+                  <Link href={`/artist/${artist.slug}`} className={styles.artistAvatarLink}>
+                    <div className={styles.artistAvatarContainer}>
+                      {artist.avatar_url ? (
+                        <div className={styles.artistAvatarImage}>
+                          <Image
+                            src={artist.avatar_url}
+                            alt={artist.name}
+                            width={80}
+                            height={80}
+                            className={styles.artistAvatar}
+                          />
+                        </div>
+                      ) : (
+                        <div className={styles.artistAvatarPlaceholder}>
+                          {artist.initials}
+                        </div>
+                      )}
+                      <div className={styles.artistTooltip}>
+                        <div className={styles.artistTooltipName}>{artist.name}</div>
+                        {artist.discipline && (
+                          <div className={styles.artistTooltipDiscipline}>{artist.discipline}</div>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </ScrollAnimation>
+              ))}
+            </div>
+          ) : (
+            <div className={styles.artistsGrid}>
+              <div className={styles.noArtistsText}>No artists yet</div>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className={styles.featured}>

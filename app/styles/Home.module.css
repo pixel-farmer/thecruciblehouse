@@ -7,11 +7,46 @@
   background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
   position: relative;
   padding-top: 80px;
+  overflow: hidden;
+}
+
+.heatGradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 102, 34, 0) 0%,
+    rgba(255, 102, 34, 0.08) 20%,
+    rgba(255, 102, 34, 0.08) 40%,
+    rgba(255, 102, 34, 0.08) 60%,
+    rgba(255, 102, 34, 0) 100%
+  );
+  animation: heatRise 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes heatRise {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
 }
 
 .heroContent {
   text-align: center;
   z-index: 2;
+  position: relative;
 }
 
 .heroTitle {
@@ -126,6 +161,117 @@
   font-size: 0.95rem;
 }
 
+.recentArtists {
+  background-color: var(--white);
+  padding: 100px 0;
+}
+
+.artistsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
+  margin-top: 60px;
+}
+
+.artistAvatarLink {
+  text-decoration: none;
+  color: inherit;
+}
+
+.artistAvatarContainer {
+  position: relative;
+  width: 80px;
+  height: 80px;
+}
+
+.artistAvatarImage,
+.artistAvatarPlaceholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--primary-color);
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.artistAvatarContainer:hover .artistAvatarImage,
+.artistAvatarContainer:hover .artistAvatarPlaceholder {
+  transform: scale(1.1);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+}
+
+.artistAvatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.artistAvatarPlaceholder {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.8rem;
+  font-weight: 600;
+  font-family: var(--font-inter), sans-serif;
+}
+
+.artistTooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background-color: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 1000;
+  margin-bottom: 8px;
+}
+
+.artistAvatarContainer:hover .artistTooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.artistTooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.artistTooltipName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.artistTooltipDiscipline {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.loadingText,
+.noArtistsText {
+  text-align: center;
+  color: var(--text-light);
+  font-size: 1.1rem;
+  width: 100%;
+  padding: 40px 0;
+}
+
 @media (max-width: 768px) {
   .heroTitle {
     font-size: 2.5rem;
@@ -137,6 +283,25 @@
 
   .featuredGrid {
     grid-template-columns: 1fr;
+  }
+
+  .artistsGrid {
+    gap: 20px;
+  }
+
+  .artistAvatarContainer {
+    width: 60px;
+    height: 60px;
+  }
+
+  .artistAvatarImage,
+  .artistAvatarPlaceholder {
+    width: 60px;
+    height: 60px;
+  }
+
+  .artistAvatarPlaceholder {
+    font-size: 1.4rem;
   }
 }
 
