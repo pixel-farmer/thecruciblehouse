@@ -21,11 +21,11 @@ export default function Footer() {
             <Link href="/pricing">Pricing</Link>
 {/*             <Link href="/shop">Shop</Link>
  */}          </div>
-          <div className={styles.footerSocial}>
+          {/* <div className={styles.footerSocial}>
             <a href="#" aria-label="Instagram">Instagram</a>
             <a href="#" aria-label="Facebook">Facebook</a>
             <a href="#" aria-label="Twitter">Twitter</a>
-          </div>
+          </div> */}
         </div>
         <div className={styles.footerBottom}>
           <p>&copy; 2025 The Crucible House. All rights reserved.</p>

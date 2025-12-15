@@ -346,20 +346,13 @@ export default function CommissionsPage() {
                         <Link key={member.id} href={`/artist/${member.slug || member.id}`} style={{ textDecoration: 'none' }}>
                           <div className={styles.memberItem}>
                             {member.avatar && member.avatar.startsWith('http') ? (
-                              <div style={{
-                                width: '45px',
-                                height: '45px',
-                                borderRadius: '50%',
-                                overflow: 'hidden',
-                                flexShrink: 0,
-                                position: 'relative',
-                              }}>
+                              <div className={styles.memberAvatarImage} style={{ position: 'relative' }}>
                                 <Image
                                   src={member.avatar}
                                   alt={member.name || 'Member'}
                                   width={45}
                                   height={45}
-                                  style={{ objectFit: 'cover' }}
+                                  style={{ borderRadius: '50%', objectFit: 'cover' }}
                                 />
                                 {member.isPro && <ProBadge size={14} />}
                               </div>

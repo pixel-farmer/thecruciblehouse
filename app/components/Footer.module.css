@@ -12,7 +12,7 @@
 
 .footerContent {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-columns: auto 1fr;
   gap: 40px;
   align-items: center;
   margin-bottom: 40px;
@@ -40,7 +40,8 @@
   display: flex;
   justify-content: center;
   gap: 30px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .footerLinks a {

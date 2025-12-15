@@ -13,6 +13,7 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCommissionsDropdownOpen, setIsCommissionsDropdownOpen] = useState(false);
+  const [isResourcesDropdownOpen, setIsResourcesDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
@@ -25,6 +26,8 @@ export default function Navigation() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const commissionsDropdownRef = useRef<HTMLLIElement>(null);
   const commissionsDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const resourcesDropdownRef = useRef<HTMLLIElement>(null);
+  const resourcesDropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -161,12 +164,19 @@ export default function Navigation() {
         }
         setIsCommissionsDropdownOpen(false);
       }
+      if (resourcesDropdownRef.current && !resourcesDropdownRef.current.contains(event.target as Node)) {
+        if (resourcesDropdownTimeoutRef.current) {
+          clearTimeout(resourcesDropdownTimeoutRef.current);
+          resourcesDropdownTimeoutRef.current = null;
+        }
+        setIsResourcesDropdownOpen(false);
+      }
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
       }
     };
 
-    if (isDropdownOpen || isCommissionsDropdownOpen || isNotificationsOpen) {
+    if (isDropdownOpen || isCommissionsDropdownOpen || isResourcesDropdownOpen || isNotificationsOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
@@ -175,8 +185,11 @@ export default function Navigation() {
       if (commissionsDropdownTimeoutRef.current) {
         clearTimeout(commissionsDropdownTimeoutRef.current);
       }
+      if (resourcesDropdownTimeoutRef.current) {
+        clearTimeout(resourcesDropdownTimeoutRef.current);
+      }
     };
-  }, [isDropdownOpen, isCommissionsDropdownOpen, isNotificationsOpen]);
+  }, [isDropdownOpen, isCommissionsDropdownOpen, isResourcesDropdownOpen, isNotificationsOpen]);
 
   const handleLogout = () => {
     // Set ref flag immediately (doesn't trigger re-render)
@@ -303,6 +316,63 @@ export default function Navigation() {
                           }}
                         >
                           Post a Job
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              );
+            }
+            if (link.href === '/resources') {
+              return (
+                <li key={link.href} ref={resourcesDropdownRef} className={styles.dropdownContainer}>
+                  <div
+                    className={styles.dropdownTrigger}
+                    onMouseEnter={() => {
+                      if (resourcesDropdownTimeoutRef.current) {
+                        clearTimeout(resourcesDropdownTimeoutRef.current);
+                        resourcesDropdownTimeoutRef.current = null;
+                      }
+                      setIsResourcesDropdownOpen(true);
+                    }}
+                    onMouseLeave={() => {
+                      resourcesDropdownTimeoutRef.current = setTimeout(() => {
+                        setIsResourcesDropdownOpen(false);
+                      }, 200);
+                    }}
+                  >
+                    <Link
+                      href={link.href}
+                      className={`${styles.navLink} ${pathname === link.href ? styles.active : ''}`}
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {link.label}
+                    </Link>
+                    {isResourcesDropdownOpen && (
+                      <div 
+                        className={styles.dropdownMenu}
+                        onMouseEnter={() => {
+                          if (resourcesDropdownTimeoutRef.current) {
+                            clearTimeout(resourcesDropdownTimeoutRef.current);
+                            resourcesDropdownTimeoutRef.current = null;
+                          }
+                          setIsResourcesDropdownOpen(true);
+                        }}
+                        onMouseLeave={() => {
+                          resourcesDropdownTimeoutRef.current = setTimeout(() => {
+                            setIsResourcesDropdownOpen(false);
+                          }, 200);
+                        }}
+                      >
+                        <Link
+                          href="/resources/write-article"
+                          className={styles.dropdownLink}
+                          onClick={() => {
+                            setIsResourcesDropdownOpen(false);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Post Article
                         </Link>
                       </div>
                     )}
