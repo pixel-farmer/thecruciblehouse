@@ -369,3 +369,94 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
+// PATCH: Update a single post
+export async function PATCH(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { id, content } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Post ID is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Post content is required' },
+        { status: 400 }
+      );
+    }
+
+    if (content.length > 300) {
+      return NextResponse.json(
+        { error: 'Post content must be 300 characters or less' },
+        { status: 400 }
+      );
+    }
+
+    // Verify user is authenticated
+    const supabase = await createAuthenticatedSupabaseClient(request);
+    
+    // Get the user from the access token
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in.' },
+        { status: 401 }
+      );
+    }
+
+    const userId = user.id;
+
+    // Update the post (RLS will ensure user can only update their own posts)
+    const { data, error } = await supabase
+      .from('community_posts')
+      .update({ content: content.trim() })
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[posts PATCH] Error updating post:', error);
+      
+      // Check if it's an RLS policy violation or post not found
+      if (error.code === '42501' || error.message.includes('permission denied')) {
+        return NextResponse.json(
+          { error: 'You do not have permission to edit this post.' },
+          { status: 403 }
+        );
+      }
+      
+      if (error.code === 'PGRST116') {
+        return NextResponse.json(
+          { error: 'Post not found or you do not have permission to edit it.' },
+          { status: 404 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'Failed to update post', details: error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ 
+      post: data, 
+      success: true 
+    });
+  } catch (error) {
+    console.error('[posts PATCH] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+

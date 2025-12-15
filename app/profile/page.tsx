@@ -15,9 +15,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  const [userPosts, setUserPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'profile' | 'posts' | 'artwork' | 'commissions' | 'meetups' | 'exhibits' | 'subscription'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'artwork' | 'commissions' | 'meetups' | 'exhibits' | 'subscription'>('profile');
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [subscriptionActionLoading, setSubscriptionActionLoading] = useState(false);
@@ -45,7 +43,6 @@ export default function ProfilePage() {
         setLoading(false);
         const galleryImageId = session.user.user_metadata?.gallery_image_id || null;
         setGalleryImageId(galleryImageId);
-        await fetchUserPosts(session.user.id);
         await fetchUserCommissions(session.user.id);
         await fetchUserArtwork(session.user.id);
         await fetchUserMeetups(session.user.id);
@@ -203,22 +200,6 @@ export default function ProfilePage() {
     }
   };
 
-  const fetchUserPosts = async (userId: string) => {
-    try {
-      setPostsLoading(true);
-      const response = await fetch('/api/posts');
-      if (response.ok) {
-        const data = await response.json();
-        // Filter posts to only show current user's posts
-        const myPosts = (data.posts || []).filter((post: any) => post.user_id === userId);
-        setUserPosts(myPosts);
-      }
-    } catch (error) {
-      console.error('Error fetching user posts:', error);
-    } finally {
-      setPostsLoading(false);
-    }
-  };
 
   const fetchUserCommissions = async (userId: string) => {
     try {
@@ -345,30 +326,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleDeletePost = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this post?')) {
-      return;
-    }
-
-    try {
-      // Use Supabase client directly for deletion (RLS will handle permissions)
-      const { error } = await supabase
-        .from('community_posts')
-        .delete()
-        .eq('id', postId);
-
-      if (error) {
-        console.error('Error deleting post:', error);
-        alert(error.message || 'Failed to delete post');
-      } else {
-        // Remove the post from the local state
-        setUserPosts(userPosts.filter((post: any) => post.id !== postId));
-      }
-    } catch (error) {
-      console.error('Error deleting post:', error);
-      alert('Failed to delete post. Please try again.');
-    }
-  };
 
   const handleDeleteCommission = async (commissionId: string) => {
     if (!confirm('Are you sure you want to delete this commission?')) {
@@ -695,12 +652,6 @@ export default function ProfilePage() {
                     Artwork
                   </button>
                   <button
-                    className={`${styles.tabButton} ${activeTab === 'posts' ? styles.tabButtonActive : ''}`}
-                    onClick={() => setActiveTab('posts')}
-                  >
-                    Posts
-                  </button>
-                  <button
                     className={`${styles.tabButton} ${activeTab === 'commissions' ? styles.tabButtonActive : ''}`}
                     onClick={() => setActiveTab('commissions')}
                   >
@@ -775,66 +726,6 @@ export default function ProfilePage() {
                       </div>
                     )}
                   </>
-                )}
-
-                {/* Posts Tab Content */}
-                {activeTab === 'posts' && (
-                  <div className={styles.postsSection}>
-                    <h4 className={styles.postsTitle}>My Posts ({userPosts.length})</h4>
-                    
-                    {postsLoading ? (
-                      <div className={styles.loading}>Loading posts...</div>
-                    ) : userPosts.length === 0 ? (
-                      <div className={styles.emptyState}>
-                        <p>You haven't posted anything yet.</p>
-                        <a href="/community" className={styles.linkToCommunity}>
-                          Go to Community →
-                        </a>
-                      </div>
-                    ) : (
-                      <div className={styles.postsList}>
-                        {userPosts.map((post) => (
-                          <div key={post.id} className={styles.post}>
-                            <Link href="/profile" style={{ textDecoration: 'none' }}>
-                              {post.user_avatar && post.user_avatar.startsWith('http') ? (
-                                <div className={styles.postAvatarImage}>
-                                  <Image
-                                    src={post.user_avatar}
-                                    alt="Profile"
-                                    width={48}
-                                    height={48}
-                                    className={styles.postAvatarImg}
-                                  />
-                                </div>
-                              ) : (
-                                <div className={styles.postAvatar}>{post.user_avatar || userInitials}</div>
-                              )}
-                            </Link>
-                            <div className={styles.postContent}>
-                              <div className={styles.postHeader}>
-                                <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit' }}>
-                                  <span className={styles.postName}>{post.user_name || userName}</span>
-                                </Link>
-                                <span className={styles.postHandle}>{post.user_handle || userHandle}</span>
-                                <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
-                              </div>
-                              <p className={styles.postText}>{post.content}</p>
-                              <div className={styles.postFooter}>
-                                <p className={styles.postDate}>{formatDate(post.created_at)}</p>
-                                <button
-                                  onClick={() => handleDeletePost(post.id)}
-                                  className={styles.deleteButton}
-                                  title="Delete post"
-                                >
-                                  Delete
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
                 )}
 
                 {/* Artwork Tab Content */}

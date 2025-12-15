@@ -297,8 +297,9 @@
 
 .postHeader {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 4px;
   flex-wrap: wrap;
 }
@@ -331,6 +332,41 @@
   line-height: 1.5;
   margin: 0;
   word-wrap: break-word;
+}
+
+.postMenuDropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.postMenuItem {
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-inter);
+  font-size: 0.9rem;
+  color: var(--text-dark);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.postMenuItem:hover {
+  background-color: var(--secondary-color);
+}
+
+.postMenuItem:first-child {
+  border-bottom: 1px solid var(--border-color);
 }
 
 /* Column 3: Nearby & Events */

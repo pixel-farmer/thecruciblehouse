@@ -50,6 +50,24 @@ function CommunityPageContent() {
   const [selectedGroup, setSelectedGroup] = useState<any | null>(null);
   const [isGroupMember, setIsGroupMember] = useState(false);
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
+  const [openPostMenuId, setOpenPostMenuId] = useState<string | null>(null);
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editingPostContent, setEditingPostContent] = useState('');
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-post-menu]')) {
+        setOpenPostMenuId(null);
+      }
+    };
+
+    if (openPostMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openPostMenuId]);
 
   // Check for upgrade query parameter or checkout success
   useEffect(() => {
@@ -724,6 +742,87 @@ function CommunityPageContent() {
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to delete posts.');
+        return;
+      }
+
+      const response = await fetch(`/api/posts?id=${postId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        // Remove post from state
+        setPosts(posts.filter(p => p.id !== postId));
+        setGroupPosts(groupPosts.filter(p => p.id !== postId));
+        setOpenPostMenuId(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete post');
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('An error occurred while deleting the post');
+    }
+  };
+
+  const handleEditPost = (post: any) => {
+    setEditingPostId(post.id);
+    setEditingPostContent(post.content);
+    setOpenPostMenuId(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPostId || !editingPostContent.trim()) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to edit posts.');
+        return;
+      }
+
+      const response = await fetch('/api/posts', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          id: editingPostId,
+          content: editingPostContent.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update post in state
+        setPosts(posts.map(p => p.id === editingPostId ? data.post : p));
+        setGroupPosts(groupPosts.map(p => p.id === editingPostId ? data.post : p));
+        setEditingPostId(null);
+        setEditingPostContent('');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update post');
+      }
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('An error occurred while updating the post');
+    }
+  };
+
   const handlePostSubmit = async () => {
     if (!postText.trim() || !userId || isPosting) return;
 
@@ -1166,13 +1265,119 @@ function CommunityPageContent() {
                               </div>
                               <div className={styles.postContent}>
                                 <div className={styles.postHeader}>
-                                  <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                    <span className={styles.postName}>{post.user_name || 'User'}</span>
-                                  </Link>
-                                  <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
-                                  <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, flexWrap: 'wrap' }}>
+                                    <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                      <span className={styles.postName}>{post.user_name || 'User'}</span>
+                                    </Link>
+                                    <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                                    <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                                  </div>
+                                  {post.user_id === userId && (
+                                    <div style={{ position: 'relative' }} data-post-menu>
+                                      <button
+                                        onClick={() => setOpenPostMenuId(openPostMenuId === post.id ? null : post.id)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          cursor: 'pointer',
+                                          padding: '4px 8px',
+                                          borderRadius: '50%',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          color: 'var(--text-light)',
+                                          fontSize: '1.2rem',
+                                          lineHeight: 1,
+                                          transition: 'background-color 0.2s ease',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                      >
+                                        ⋯
+                                      </button>
+                                      {openPostMenuId === post.id && (
+                                        <div className={styles.postMenuDropdown}>
+                                          <button
+                                            onClick={() => handleEditPost(post)}
+                                            className={styles.postMenuItem}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            onClick={() => handleDeletePost(post.id)}
+                                            className={styles.postMenuItem}
+                                            style={{ color: '#ef4444' }}
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                <p className={styles.postText}>{post.content}</p>
+                                {editingPostId === post.id ? (
+                                  <div>
+                                    <textarea
+                                      value={editingPostContent}
+                                      onChange={(e) => setEditingPostContent(e.target.value)}
+                                      style={{
+                                        width: '100%',
+                                        minHeight: '80px',
+                                        padding: '8px',
+                                        borderRadius: '8px',
+                                        border: '1px solid var(--border-color)',
+                                        fontFamily: 'var(--font-inter)',
+                                        fontSize: '0.95rem',
+                                        resize: 'vertical',
+                                        marginBottom: '8px',
+                                      }}
+                                      maxLength={300}
+                                    />
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                      <button
+                                        onClick={handleSaveEdit}
+                                        style={{
+                                          padding: '6px 16px',
+                                          background: '#ff6622',
+                                          color: 'white',
+                                          border: 'none',
+                                          borderRadius: '20px',
+                                          fontFamily: 'var(--font-inter)',
+                                          fontSize: '0.9rem',
+                                          fontWeight: 500,
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setEditingPostId(null);
+                                          setEditingPostContent('');
+                                        }}
+                                        style={{
+                                          padding: '6px 16px',
+                                          background: 'transparent',
+                                          color: 'var(--text-light)',
+                                          border: '1px solid var(--border-color)',
+                                          borderRadius: '20px',
+                                          fontFamily: 'var(--font-inter)',
+                                          fontSize: '0.9rem',
+                                          fontWeight: 500,
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <p className={styles.postText}>{post.content}</p>
+                                )}
                               </div>
                             </div>
                           );
@@ -1408,13 +1613,119 @@ function CommunityPageContent() {
                             </div>
                             <div className={styles.postContent}>
                               <div className={styles.postHeader}>
-                                <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
-                                  <span className={styles.postName}>{post.user_name || 'User'}</span>
-                                </Link>
-                                <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
-                                <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1, flexWrap: 'wrap' }}>
+                                  <Link href={artistLink} style={{ textDecoration: 'none', color: 'inherit' }}>
+                                    <span className={styles.postName}>{post.user_name || 'User'}</span>
+                                  </Link>
+                                  <span className={styles.postHandle}>{post.user_handle || '@user'}</span>
+                                  <span className={styles.postTime}>{formatTimeAgo(post.created_at)}</span>
+                                </div>
+                                {post.user_id === userId && (
+                                  <div style={{ position: 'relative' }} data-post-menu>
+                                    <button
+                                      onClick={() => setOpenPostMenuId(openPostMenuId === post.id ? null : post.id)}
+                                      style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        borderRadius: '50%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: 'var(--text-light)',
+                                        fontSize: '1.2rem',
+                                        lineHeight: 1,
+                                        transition: 'background-color 0.2s ease',
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                      }}
+                                    >
+                                      ⋯
+                                    </button>
+                                    {openPostMenuId === post.id && (
+                                      <div className={styles.postMenuDropdown}>
+                                        <button
+                                          onClick={() => handleEditPost(post)}
+                                          className={styles.postMenuItem}
+                                        >
+                                          Edit
+                                        </button>
+                                        <button
+                                          onClick={() => handleDeletePost(post.id)}
+                                          className={styles.postMenuItem}
+                                          style={{ color: '#ef4444' }}
+                                        >
+                                          Delete
+                                        </button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <p className={styles.postText}>{post.content}</p>
+                              {editingPostId === post.id ? (
+                                <div>
+                                  <textarea
+                                    value={editingPostContent}
+                                    onChange={(e) => setEditingPostContent(e.target.value)}
+                                    style={{
+                                      width: '100%',
+                                      minHeight: '80px',
+                                      padding: '8px',
+                                      borderRadius: '8px',
+                                      border: '1px solid var(--border-color)',
+                                      fontFamily: 'var(--font-inter)',
+                                      fontSize: '0.95rem',
+                                      resize: 'vertical',
+                                      marginBottom: '8px',
+                                    }}
+                                    maxLength={300}
+                                  />
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                      onClick={handleSaveEdit}
+                                      style={{
+                                        padding: '6px 16px',
+                                        background: '#ff6622',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '20px',
+                                        fontFamily: 'var(--font-inter)',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setEditingPostId(null);
+                                        setEditingPostContent('');
+                                      }}
+                                      style={{
+                                        padding: '6px 16px',
+                                        background: 'transparent',
+                                        color: 'var(--text-light)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '20px',
+                                        fontFamily: 'var(--font-inter)',
+                                        fontSize: '0.9rem',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className={styles.postText}>{post.content}</p>
+                              )}
                             </div>
                           </div>
                         );
