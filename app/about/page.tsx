@@ -23,7 +23,7 @@ export default function AboutPage() {
                 the artistic journey.
               </p>
               <p>
-                Our gallery serves as a space where art is forged—where ideas, techniques, and 
+                Our gallery serves as a space where art and connections are forged—where ideas, techniques, and 
                 vision come together to create something extraordinary. We are committed to 
                 presenting thought-provoking and visually striking artwork that resonates with 
                 collectors and art enthusiasts alike.

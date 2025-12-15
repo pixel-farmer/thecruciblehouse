@@ -42,7 +42,7 @@ export default function Home() {
         <ScrollAnimation>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>The Crucible House</h1>
-            <p className={styles.heroSubtitle}>Where Art is Forged</p>
+            <p className={styles.heroSubtitle}>Where Art and Connections are Forged</p>
             <p className={styles.heroSubtitle}>We’re building a space for artists to connect, share, and grow together. Check back soon!</p>
             <Link href="/artist" className={styles.ctaButton}>
               View Artists

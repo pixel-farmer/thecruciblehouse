@@ -19,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'The Crucible House | Where Art is Forged',
-  description: 'The Crucible House - Where Art is Forged',
+  title: 'The Crucible House | Where Art and Connections are Forged',
+  description: 'The Crucible House - Where Art and Connections are Forged',
 };
 
 export default function RootLayout({
