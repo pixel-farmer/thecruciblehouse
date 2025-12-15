@@ -51,15 +51,57 @@ function CommunityPageContent() {
   const [isGroupMember, setIsGroupMember] = useState(false);
   const [isJoiningGroup, setIsJoiningGroup] = useState(false);
 
-  // Check for upgrade query parameter
+  // Check for upgrade query parameter or checkout success
   useEffect(() => {
     const upgradeParam = searchParams?.get('upgrade');
+    const sessionId = searchParams?.get('session_id');
+    
     if (upgradeParam === 'true' && isLoggedIn && !hasPaidMembership) {
       setShowUpgradeModal(true);
       // Remove the query parameter from URL without reload
       if (typeof window !== 'undefined') {
         window.history.replaceState({}, '', '/community');
       }
+    }
+    
+    // If returning from Stripe checkout, verify and update membership
+    if (sessionId && isLoggedIn) {
+      const verifyCheckout = async () => {
+        try {
+          // Verify the checkout session and update membership if needed
+          const response = await fetch('/api/checkout/verify', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sessionId }),
+          });
+
+          if (response.ok) {
+            // Refresh the session to get updated metadata
+            await supabase.auth.refreshSession();
+            // Re-check membership after refresh
+            const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+            if (refreshedSession) {
+              const userMetadata = refreshedSession.user.user_metadata || {};
+              const membershipStatus = userMetadata.membership_status;
+              const hasPaidMembership = userMetadata.has_paid_membership;
+              const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+              setHasPaidMembership(isPro);
+            }
+          } else {
+            console.error('Failed to verify checkout session');
+          }
+        } catch (error) {
+          console.error('Error verifying checkout:', error);
+        } finally {
+          // Remove session_id from URL
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, '', '/community');
+          }
+        }
+      };
+      verifyCheckout();
     }
   }, [searchParams, isLoggedIn, hasPaidMembership]);
 
@@ -108,9 +150,11 @@ function CommunityPageContent() {
           }
           
           // Check if user has paid membership
-          const userMetadata = session.user.user_metadata;
-          const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-          setHasPaidMembership(!!membershipStatus);
+          const userMetadata = session.user.user_metadata || {};
+          const membershipStatus = userMetadata.membership_status;
+          const hasPaidMembership = userMetadata.has_paid_membership;
+          const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+          setHasPaidMembership(isPro);
         } else {
           setHasPaidMembership(false);
           setUserInitials('U');
@@ -219,9 +263,11 @@ function CommunityPageContent() {
           setUserHandle(`@${handle}`);
         }
         
-        const userMetadata = session.user.user_metadata;
-        const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-        setHasPaidMembership(!!membershipStatus);
+        const userMetadata = session.user.user_metadata || {};
+        const membershipStatus = userMetadata.membership_status;
+        const hasPaidMembership = userMetadata.has_paid_membership;
+        const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+        setHasPaidMembership(isPro);
       } else {
         setHasPaidMembership(false);
         setUserInitials('U');
@@ -345,8 +391,9 @@ function CommunityPageContent() {
             }
             // If logged in but not pro, redirect to pricing
             const userMetadata = session.user.user_metadata;
-            const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-            const isPro = !!membershipStatus;
+            const membershipStatus = userMetadata?.membership_status;
+            const hasPaidMembership = userMetadata?.has_paid_membership;
+            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
             if (!isPro) {
               router.push('/pricing');
             } else {
@@ -539,8 +586,9 @@ function CommunityPageContent() {
             }
             // If logged in but not pro, redirect to pricing
             const userMetadata = session.user.user_metadata;
-            const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-            const isPro = !!membershipStatus;
+            const membershipStatus = userMetadata?.membership_status;
+            const hasPaidMembership = userMetadata?.has_paid_membership;
+            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
             if (!isPro) {
               setIsMapFullscreen(false);
               router.push('/pricing');
@@ -1007,9 +1055,10 @@ function CommunityPageContent() {
     }
     
     // Check if user is pro
-    const userMetadata = session.user.user_metadata;
-    const membershipStatus = userMetadata?.membership_status || userMetadata?.has_paid_membership;
-    const isPro = !!membershipStatus;
+    const userMetadata = session.user.user_metadata || {};
+    const membershipStatus = userMetadata.membership_status;
+    const hasPaidMembership = userMetadata.has_paid_membership;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
     
     if (!isPro) {
       // Redirect to pricing page if logged in but not pro

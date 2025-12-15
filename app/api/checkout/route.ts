@@ -36,24 +36,52 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Create product for membership
-    const product = await stripe.products.create({
-      name: 'Pro Membership',
-      description: 'Monthly Pro Membership',
-      metadata: {
-        type: 'membership',
-      },
+    // Find or create product for membership
+    let product;
+    const existingProducts = await stripe.products.list({
+      active: true,
+      limit: 100,
     });
+    
+    product = existingProducts.data.find(
+      (p) => p.name === 'Pro Membership' && p.metadata?.type === 'membership'
+    );
 
-    // Create price for membership subscription
-    const price = await stripe.prices.create({
+    if (!product) {
+      product = await stripe.products.create({
+        name: 'Pro Membership',
+        description: 'Monthly Pro Membership',
+        metadata: {
+          type: 'membership',
+        },
+      });
+    }
+
+    // Find or create price for membership subscription
+    let price;
+    const existingPrices = await stripe.prices.list({
       product: product.id,
-      currency: 'usd',
-      unit_amount: MEMBERSHIP_PRICE_CENTS,
-      recurring: {
-        interval: 'month',
-      },
+      active: true,
+      limit: 100,
     });
+    
+    price = existingPrices.data.find(
+      (p) => 
+        p.currency === 'usd' &&
+        p.unit_amount === MEMBERSHIP_PRICE_CENTS &&
+        p.recurring?.interval === 'month'
+    );
+
+    if (!price) {
+      price = await stripe.prices.create({
+        product: product.id,
+        currency: 'usd',
+        unit_amount: MEMBERSHIP_PRICE_CENTS,
+        recurring: {
+          interval: 'month',
+        },
+      });
+    }
 
     // Create Stripe Checkout Session for subscription
     const session = await stripe.checkout.sessions.create({

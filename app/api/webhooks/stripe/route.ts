@@ -22,6 +22,54 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Handle checkout session completed (this fires immediately after successful payment)
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+
+      if (session.mode === 'subscription' && session.metadata?.type === 'membership' && session.metadata?.userId) {
+        const userId = session.metadata.userId;
+        const subscriptionId = session.subscription as string;
+
+        if (subscriptionId) {
+          // Retrieve the subscription to get its status
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+
+          if (subscription.metadata?.type === 'membership' && subscription.metadata?.userId) {
+            const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+
+            // Get current user
+            const { data: { user }, error: getUserError } = await supabaseServer.auth.admin.getUserById(userId);
+
+            if (getUserError || !user) {
+              console.error('Error fetching user:', getUserError);
+              return NextResponse.json({ received: true }); // Don't fail webhook
+            }
+
+            // Update user metadata
+            const updatedMetadata = {
+              ...(user.user_metadata || {}),
+              membership_status: isActive ? 'active' : 'inactive',
+              has_paid_membership: isActive,
+              membership_purchased_at: new Date(subscription.created * 1000).toISOString(),
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: subscription.customer as string,
+            };
+
+            const { error: updateError } = await supabaseServer.auth.admin.updateUserById(
+              userId,
+              { user_metadata: updatedMetadata }
+            );
+
+            if (updateError) {
+              console.error('Error updating user membership:', updateError);
+            } else {
+              console.log(`Membership activated for user ${userId} via checkout.session.completed webhook`);
+            }
+          }
+        }
+      }
+    }
+
     // Handle subscription created/updated
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
       const subscription = event.data.object as Stripe.Subscription;
