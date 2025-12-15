@@ -8,8 +8,8 @@ export default function ProBadge({ size = 18 }: ProBadgeProps) {
   return (
     <div style={{
       position: 'absolute',
-      bottom: '-2px',
-      right: '-2px',
+      bottom: '-6px',
+      right: '-6px',
       width: `${size}px`,
       height: `${size}px`,
       borderRadius: '50%',

@@ -295,12 +295,11 @@ function CommunityPageContent() {
       const mapOptions: any = {
         center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
         zoom: 8,
-        // Disable interaction if user doesn't have membership
-        gestureHandling: hasPaidMembership ? 'auto' : 'none',
-        zoomControl: hasPaidMembership,
-        scrollwheel: hasPaidMembership,
-        disableDoubleClickZoom: !hasPaidMembership,
-        draggable: hasPaidMembership,
+        gestureHandling: 'auto',
+        zoomControl: true,
+        scrollwheel: true,
+        disableDoubleClickZoom: false,
+        draggable: true,
       };
 
       // Add custom map style if Map ID is configured
@@ -311,99 +310,6 @@ function CommunityPageContent() {
 
       const map = new (window as any).google.maps.Map(mapElement, mapOptions);
       setMapInstance(map);
-
-      // Add overlay and prevent interaction if no membership
-      if (!hasPaidMembership) {
-        // Show message when user tries to interact
-        const overlay = document.createElement('div');
-        overlay.setAttribute('data-upgrade-overlay', 'true');
-        overlay.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          pointer-events: none;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        `;
-        overlay.innerHTML = `
-          <div style="
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            font-family: var(--font-inter);
-            max-width: 300px;
-          ">
-            <p style="margin: 0 0 1rem 0; color: var(--text-dark); font-weight: 600;">
-              Upgrade to Pro to zoom and scroll
-            </p>
-            <button id="upgrade-from-map" style="
-              background: #ff6622;
-              color: white;
-              border: none;
-              padding: 10px 20px;
-              border-radius: 20px;
-              font-weight: 600;
-              cursor: pointer;
-              font-family: var(--font-inter);
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            ">Upgrade</button>
-          </div>
-        `;
-        mapElement.style.position = 'relative';
-        mapElement.appendChild(overlay);
-
-        // Show overlay on interaction attempts
-        let overlayTimeout: NodeJS.Timeout;
-        const showOverlay = () => {
-          overlay.style.opacity = '1';
-          overlay.style.pointerEvents = 'auto';
-          clearTimeout(overlayTimeout);
-          overlayTimeout = setTimeout(() => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-          }, 3000);
-        };
-
-        // Listen for interaction attempts
-        map.addListener('click', showOverlay);
-        map.addListener('dragstart', showOverlay);
-        
-        // Handle upgrade button click
-        const upgradeBtn = overlay.querySelector('#upgrade-from-map');
-        if (upgradeBtn) {
-          upgradeBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Check session directly
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session || !session.user) {
-              setShowSignInMessage(true);
-              return;
-            }
-            // If logged in but not pro, redirect to pricing
-            const userMetadata = session.user.user_metadata;
-            const membershipStatus = userMetadata?.membership_status;
-            const hasPaidMembership = userMetadata?.has_paid_membership;
-            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
-            if (!isPro) {
-              router.push('/pricing');
-            } else {
-              // Shouldn't reach here if pro, but handle anyway
-              setUserId(session.user.id);
-              setShowUpgradeModal(true);
-            }
-          });
-        }
-      }
 
       // Fetch and add artist markers
       fetch('/api/artists/locations')
@@ -451,32 +357,8 @@ function CommunityPageContent() {
           console.error('Error fetching artist locations:', error);
         });
     }
-  }, [mapLoaded, mapInstance, hasPaidMembership]);
+  }, [mapLoaded, mapInstance]);
 
-  // Update map controls when membership status changes
-  useEffect(() => {
-    if (mapInstance) {
-      mapInstance.setOptions({
-        gestureHandling: hasPaidMembership ? 'auto' : 'none',
-        zoomControl: hasPaidMembership,
-        scrollwheel: hasPaidMembership,
-        disableDoubleClickZoom: !hasPaidMembership,
-        draggable: hasPaidMembership,
-      });
-
-      // Remove overlay if membership becomes active
-      if (hasPaidMembership) {
-        const mapElement = document.getElementById('community-map');
-        if (mapElement) {
-          // Find and remove the upgrade overlay
-          const overlay = mapElement.querySelector('[data-upgrade-overlay="true"]');
-          if (overlay) {
-            overlay.remove();
-          }
-        }
-      }
-    }
-  }, [mapInstance, hasPaidMembership]);
 
   // Initialize fullscreen map when opened
   useEffect(() => {
@@ -493,12 +375,11 @@ function CommunityPageContent() {
       const mapOptions: any = {
         center: { lat: 39.9526, lng: -75.1652 }, // Philadelphia, PA
         zoom: 8,
-        // Disable interaction if user doesn't have membership
-        gestureHandling: hasPaidMembership ? 'auto' : 'none',
-        zoomControl: hasPaidMembership,
-        scrollwheel: hasPaidMembership,
-        disableDoubleClickZoom: !hasPaidMembership,
-        draggable: hasPaidMembership,
+        gestureHandling: 'auto',
+        zoomControl: true,
+        scrollwheel: true,
+        disableDoubleClickZoom: false,
+        draggable: true,
       };
 
       // Add custom map style if Map ID is configured
@@ -509,98 +390,6 @@ function CommunityPageContent() {
 
       const map = new (window as any).google.maps.Map(fullscreenMapElement, mapOptions);
       setFullscreenMapInstance(map);
-
-      // Add overlay for fullscreen map if no membership
-      if (!hasPaidMembership) {
-        const overlay = document.createElement('div');
-        overlay.setAttribute('data-upgrade-overlay-fullscreen', 'true');
-        overlay.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          pointer-events: none;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        `;
-        overlay.innerHTML = `
-          <div style="
-            background: white;
-            padding: 1.5rem;
-            border-radius: 12px;
-            text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-            font-family: var(--font-inter);
-            max-width: 300px;
-          ">
-            <p style="margin: 0 0 1rem 0; color: var(--text-dark); font-weight: 600;">
-              Upgrade to Pro to zoom and scroll
-            </p>
-            <button id="upgrade-from-fullscreen-map" style="
-              background: #ff6622;
-              color: white;
-              border: none;
-              padding: 10px 20px;
-              border-radius: 20px;
-              font-weight: 600;
-              cursor: pointer;
-              font-family: var(--font-inter);
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            ">Upgrade</button>
-          </div>
-        `;
-        fullscreenMapElement.style.position = 'relative';
-        fullscreenMapElement.appendChild(overlay);
-
-        let overlayTimeout: NodeJS.Timeout;
-        const showOverlay = () => {
-          overlay.style.opacity = '1';
-          overlay.style.pointerEvents = 'auto';
-          clearTimeout(overlayTimeout);
-          overlayTimeout = setTimeout(() => {
-            overlay.style.opacity = '0';
-            overlay.style.pointerEvents = 'none';
-          }, 3000);
-        };
-
-        map.addListener('click', showOverlay);
-        map.addListener('dragstart', showOverlay);
-
-        const upgradeBtn = overlay.querySelector('#upgrade-from-fullscreen-map');
-        if (upgradeBtn) {
-          upgradeBtn.addEventListener('click', async (e) => {
-            e.stopPropagation();
-            // Check session directly
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session || !session.user) {
-              setShowSignInMessage(true);
-              setIsMapFullscreen(false);
-              return;
-            }
-            // If logged in but not pro, redirect to pricing
-            const userMetadata = session.user.user_metadata;
-            const membershipStatus = userMetadata?.membership_status;
-            const hasPaidMembership = userMetadata?.has_paid_membership;
-            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
-            if (!isPro) {
-              setIsMapFullscreen(false);
-              router.push('/pricing');
-            } else {
-              // Shouldn't reach here if pro, but handle anyway
-              setUserId(session.user.id);
-              setIsMapFullscreen(false);
-              setShowUpgradeModal(true);
-            }
-          });
-        }
-      }
 
       // Fetch and add artist markers to fullscreen map
       fetch('/api/artists/locations')
@@ -648,32 +437,8 @@ function CommunityPageContent() {
           console.error('Error fetching artist locations:', error);
         });
     }
-  }, [isMapFullscreen, mapLoaded, fullscreenMapInstance, hasPaidMembership, isLoggedIn, userId]);
+  }, [isMapFullscreen, mapLoaded, fullscreenMapInstance, isLoggedIn, userId]);
 
-  // Update fullscreen map controls when membership status changes
-  useEffect(() => {
-    if (fullscreenMapInstance) {
-      fullscreenMapInstance.setOptions({
-        gestureHandling: hasPaidMembership ? 'auto' : 'none',
-        zoomControl: hasPaidMembership,
-        scrollwheel: hasPaidMembership,
-        disableDoubleClickZoom: !hasPaidMembership,
-        draggable: hasPaidMembership,
-      });
-
-      // Remove overlay if membership becomes active
-      if (hasPaidMembership) {
-        const fullscreenMapElement = document.getElementById('fullscreen-map');
-        if (fullscreenMapElement) {
-          // Find and remove the upgrade overlay
-          const overlay = fullscreenMapElement.querySelector('[data-upgrade-overlay-fullscreen="true"]');
-          if (overlay) {
-            overlay.remove();
-          }
-        }
-      }
-    }
-  }, [fullscreenMapInstance, hasPaidMembership]);
 
   const fetchMeetups = async () => {
     try {

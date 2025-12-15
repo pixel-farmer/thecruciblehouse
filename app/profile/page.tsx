@@ -577,7 +577,7 @@ export default function ProfilePage() {
             {/* Profile Header */}
             <ScrollAnimation>
               <div className={styles.profileHeader}>
-                <Link href="/profile" className={styles.avatarContainer} style={{ textDecoration: 'none', position: 'relative' }}>
+                <Link href="/profile" className={styles.avatarContainer} style={{ textDecoration: 'none' }}>
                   {userAvatar ? (
                     <Image
                       src={userAvatar}
@@ -591,13 +591,6 @@ export default function ProfilePage() {
                       <span>{userInitials}</span>
                     </div>
                   )}
-                  {(() => {
-                    const userMetadata = user?.user_metadata || {};
-                    const membershipStatus = userMetadata.membership_status;
-                    const hasPaidMembership = userMetadata.has_paid_membership;
-                    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
-                    return isPro ? <ProBadge size={24} /> : null;
-                  })()}
                 </Link>
                 <div className={styles.profileInfo}>
                   <div className={styles.profileHeaderTop}>
@@ -609,15 +602,68 @@ export default function ProfilePage() {
                       {discipline && (
                         <p className={styles.userMeta}>{discipline}</p>
                       )}
-                      <p className={styles.userMeta}>
+                      <div style={{
+                        fontSize: '1rem',
+                        color: 'var(--text-light)',
+                        margin: '0 0 2px 0',
+                        fontFamily: 'var(--font-inter)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        flexWrap: 'wrap'
+                      }}>
+                        <span>
+                          {(() => {
+                            const locationParts: string[] = [];
+                            if (city && cityPublic) locationParts.push(city);
+                            if (state && statePublic) locationParts.push(state);
+                            const location = locationParts.length > 0 ? locationParts.join(', ') : null;
+                            return location ? `${location} • Joined ${joinDate}` : `Joined ${joinDate}`;
+                          })()}
+                        </span>
                         {(() => {
-                          const locationParts: string[] = [];
-                          if (city && cityPublic) locationParts.push(city);
-                          if (state && statePublic) locationParts.push(state);
-                          const location = locationParts.length > 0 ? locationParts.join(', ') : null;
-                          return location ? `${location} • Joined ${joinDate}` : `Joined ${joinDate}`;
+                          const userMetadata = user?.user_metadata || {};
+                          const membershipStatus = userMetadata.membership_status;
+                          const hasPaidMembership = userMetadata.has_paid_membership;
+                          const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+                          return isPro ? (
+                            <span style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center',
+                              position: 'relative',
+                              width: '14px',
+                              height: '14px',
+                              marginLeft: '4px'
+                            }}>
+                              <span style={{
+                                position: 'relative',
+                                width: '14px',
+                                height: '14px',
+                                borderRadius: '50%',
+                                backgroundColor: '#ff6622',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                border: '2px solid white',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              }}>
+                                <svg
+                                  width="8"
+                                  height="8"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="white"
+                                  strokeWidth="2"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
+                              </span>
+                            </span>
+                          ) : null;
                         })()}
-                      </p>
+                      </div>
                     </div>
                     <Link 
                       href="/profile/edit"

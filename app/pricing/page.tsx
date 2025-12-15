@@ -36,6 +36,7 @@ export default function PricingPage() {
     'Post on main community feed',
     'Join groups',
     'Apply for commissions',
+    'Search for artists near you on the map',
   ];
 
   const proFeatures = [
@@ -44,7 +45,6 @@ export default function PricingPage() {
     'Post an exhibit',
     'Create groups',
     'Post a job',
-    'Search for artists near you on the map',
   ];
 
   return (

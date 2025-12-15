@@ -213,6 +213,9 @@
 
 .avatarContainer {
   flex-shrink: 0;
+  position: relative;
+  display: inline-block;
+  overflow: visible;
 }
 
 .avatar {
