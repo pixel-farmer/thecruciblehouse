@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Resources.module.css';
 
@@ -213,96 +214,35 @@ export default function ResourcesPage() {
 
               <ScrollAnimation>
                 <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Groups</h3>
-                  <div className={styles.groupTabs}>
-                    <button className={styles.groupTab}>Newest</button>
-                    <button className={styles.groupTab}>Active</button>
-                    <button className={styles.groupTab}>Popular</button>
-                  </div>
-                  <div className={styles.groupList}>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Digital Artists Collective</h5>
-                      <p className={styles.groupActivity}>active 11 hours ago</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Traditional Techniques</h5>
-                      <p className={styles.groupActivity}>active a day ago</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Business & Marketing</h5>
-                      <p className={styles.groupActivity}>active a day ago</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Portrait Artists</h5>
-                      <p className={styles.groupActivity}>active a day ago</p>
-                    </div>
-                    <div className={styles.groupItem}>
-                      <h5 className={styles.groupName}>Landscape Specialists</h5>
-                      <p className={styles.groupActivity}>active 2 days ago</p>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
-
-              <ScrollAnimation>
-                <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Latest Updates</h3>
-                  <div className={styles.activityList}>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Genevieve</strong> posted an update in the group{' '}
-                        <strong>Digital Artists Collective</strong>
-                      </p>
-                      <span className={styles.activityTime}>11 hours ago</span>
-                    </div>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Michael</strong> posted an update in the group{' '}
-                        <strong>Traditional Techniques</strong>
-                      </p>
-                      <span className={styles.activityTime}>a day ago</span>
-                    </div>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Sarah</strong> posted an update
-                      </p>
-                      <span className={styles.activityTime}>2 days ago</span>
-                    </div>
-                    <div className={styles.activityItem}>
-                      <p className={styles.activityText}>
-                        <strong>Alex</strong> posted an update in the group{' '}
-                        <strong>Business & Marketing</strong>
-                      </p>
-                      <span className={styles.activityTime}>2 days ago</span>
-                    </div>
-                  </div>
-                </div>
-              </ScrollAnimation>
-
-              <ScrollAnimation>
-                <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Recent Commission Listings</h3>
-                  <div className={styles.listingList}>
-                    <div className={styles.listingItem}>
-                      <h5 className={styles.listingTitle}>Custom Portrait Commission</h5>
-                      <p className={styles.listingMeta}>Personal • $500 - $1,000</p>
-                    </div>
-                    <div className={styles.listingItem}>
-                      <h5 className={styles.listingTitle}>Corporate Art Installation</h5>
-                      <p className={styles.listingMeta}>Commercial • $5,000+</p>
-                    </div>
-                    <div className={styles.listingItem}>
-                      <h5 className={styles.listingTitle}>Landscape Painting</h5>
-                      <p className={styles.listingMeta}>Personal • $800 - $1,500</p>
-                    </div>
-                    <div className={styles.listingItem}>
-                      <h5 className={styles.listingTitle}>Digital Art Commission</h5>
-                      <p className={styles.listingMeta}>Commercial • $2,000 - $4,000</p>
-                    </div>
-                    <div className={styles.listingItem}>
-                      <h5 className={styles.listingTitle}>Sculpture Commission</h5>
-                      <p className={styles.listingMeta}>Commercial • $10,000+</p>
-                    </div>
+                  <h3 className={styles.sidebarTitle}>Recommended Reading</h3>
+                  <div className={styles.readingList}>
+                    <Link 
+                      href="https://amzn.to/48CxSN1" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={styles.readingItem}
+                    >
+                      <h5 className={styles.readingTitle}>The Artist's Way</h5>
+                      <p className={styles.readingAuthor}>by Julia Cameron</p>
+                    </Link>
+                    <Link 
+                      href="https://amzn.to/4pNgawn" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={styles.readingItem}
+                    >
+                      <h5 className={styles.readingTitle}>The Creative Act: A Way of Being</h5>
+                      <p className={styles.readingAuthor}>by Rick Rubin</p>
+                    </Link>
+                    <Link 
+                      href="https://amzn.to/4qcZGO0" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={styles.readingItem}
+                    >
+                      <h5 className={styles.readingTitle}>The Boy, the Mole, the Fox and the Horse</h5>
+                      <p className={styles.readingAuthor}>by Charlie Mackesy</p>
+                    </Link>
                   </div>
                 </div>
               </ScrollAnimation>

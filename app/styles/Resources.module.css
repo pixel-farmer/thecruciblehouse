@@ -223,6 +223,7 @@
 .activityList,
 .groupList,
 .listingList,
+.readingList,
 .trendingMediumsList {
   display: flex;
   flex-direction: column;
@@ -372,6 +373,35 @@
 }
 
 .listingMeta {
+  font-size: 0.85rem;
+  color: var(--text-light);
+}
+
+.readingItem {
+  display: block;
+  padding: 15px;
+  background-color: var(--secondary-color);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border-left: 3px solid var(--accent-color);
+  text-decoration: none;
+  color: inherit;
+}
+
+.readingItem:hover {
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+}
+
+.readingTitle {
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 5px;
+  font-size: 0.95rem;
+}
+
+.readingAuthor {
   font-size: 0.85rem;
   color: var(--text-light);
 }
