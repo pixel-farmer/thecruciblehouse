@@ -5,29 +5,59 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export async function POST(request: NextRequest) {
   try {
-    const { artworkId, artworkTitle, priceInCents } = await request.json();
+    const body = await request.json();
+    const { userId, customerEmail } = body;
 
-    if (!artworkId || !artworkTitle || !priceInCents) {
+    if (!userId || !customerEmail) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'User ID and customer email are required' },
         { status: 400 }
       );
     }
 
-    // Create product first, then create checkout session
-    const product = await stripe.products.create({
-      name: artworkTitle,
-      description: `Purchase of ${artworkTitle}`,
+    // Monthly membership price: $8.00 = 800 cents
+    const MEMBERSHIP_PRICE_CENTS = 800;
+
+    // Create or retrieve Stripe Customer
+    let customer;
+    const existingCustomers = await stripe.customers.list({
+      email: customerEmail,
+      limit: 1,
     });
 
+    if (existingCustomers.data.length > 0) {
+      customer = existingCustomers.data[0];
+    } else {
+      customer = await stripe.customers.create({
+        email: customerEmail,
+        metadata: {
+          userId: userId,
+        },
+      });
+    }
+
+    // Create product for membership
+    const product = await stripe.products.create({
+      name: 'Pro Membership',
+      description: 'Monthly Pro Membership',
+      metadata: {
+        type: 'membership',
+      },
+    });
+
+    // Create price for membership subscription
     const price = await stripe.prices.create({
       product: product.id,
       currency: 'usd',
-      unit_amount: priceInCents,
+      unit_amount: MEMBERSHIP_PRICE_CENTS,
+      recurring: {
+        interval: 'month',
+      },
     });
 
-    // Create Stripe Checkout Session
+    // Create Stripe Checkout Session for subscription
     const session = await stripe.checkout.sessions.create({
+      customer: customer.id,
       payment_method_types: ['card'],
       line_items: [
         {
@@ -35,11 +65,18 @@ export async function POST(request: NextRequest) {
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${request.headers.get('origin')}/shop/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${request.headers.get('origin')}/shop/${artworkId}`,
+      mode: 'subscription',
+      success_url: `${request.headers.get('origin')}/community?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${request.headers.get('origin')}/pricing`,
       metadata: {
-        artworkId: artworkId,
+        userId: userId,
+        type: 'membership',
+      },
+      subscription_data: {
+        metadata: {
+          userId: userId,
+          type: 'membership',
+        },
       },
     });
 

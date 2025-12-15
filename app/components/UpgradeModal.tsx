@@ -4,9 +4,7 @@ import { useState, useEffect } from 'react';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
 import {
   Elements,
-  CardElement,
   useStripe,
-  useElements
 } from '@stripe/react-stripe-js';
 import { supabase } from '@/lib/supabase';
 
@@ -30,10 +28,8 @@ interface UpgradeModalProps {
 
 function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; userId: string; onSuccess: () => void }) {
   const stripe = useStripe();
-  const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [actualUserId, setActualUserId] = useState<string | null>(userId || null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
@@ -54,209 +50,63 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
     getUserId();
   }, [actualUserId, userEmail]);
 
-  // Create subscription when component mounts
-  useEffect(() => {
-    const createSubscription = async () => {
-      const userIdToUse = actualUserId || userId;
-      const emailToUse = userEmail;
-      
-      if (!userIdToUse) {
-        setError('Please log in to upgrade your membership.');
-        return;
-      }
-
-      if (!emailToUse) {
-        setError('Email address is required for subscription.');
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/payments/create-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ 
-            userId: userIdToUse,
-            customerEmail: emailToUse,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          setError(data.error);
-          return;
-        }
-
-        setClientSecret(data.clientSecret);
-      } catch (err: any) {
-        setError(err.message || 'Failed to initialize payment');
-      }
-    };
-
-    if ((actualUserId || userId) && userEmail) {
-      createSubscription();
+  const handleCheckout = async () => {
+    const userIdToUse = actualUserId || userId;
+    const emailToUse = userEmail;
+    
+    if (!userIdToUse) {
+      setError('Please log in to upgrade your membership.');
+      return;
     }
-  }, [actualUserId, userId, userEmail]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!stripe || !elements || !clientSecret) {
+    if (!emailToUse) {
+      setError('Email address is required for subscription.');
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    const cardElement = elements.getElement(CardElement);
-
-    if (!cardElement) {
-      setError('Card element not found');
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Confirm payment with Stripe
-      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: cardElement,
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ 
+          userId: userIdToUse,
+          customerEmail: emailToUse,
+        }),
       });
 
-      if (confirmError) {
-        setError(confirmError.message || 'Payment failed');
+      const data = await response.json();
+
+      if (data.error) {
+        setError(data.error);
         setLoading(false);
         return;
       }
 
-      if (paymentIntent?.status === 'succeeded') {
-        // Payment succeeded, subscription is now active
-        // The webhook will handle updating the membership status
-        // But we can also call the upgrade endpoint immediately for faster UX
-        const userIdToUse = actualUserId || userId;
-        if (userIdToUse) {
-          try {
-            const upgradeResponse = await fetch('/api/membership/upgrade', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ userId: userIdToUse }),
-            });
+      // Redirect to Stripe Checkout
+      if (data.sessionId && stripe) {
+        // @ts-ignore - redirectToCheckout exists on Stripe instances
+        const { error: redirectError } = await stripe.redirectToCheckout({
+          sessionId: data.sessionId,
+        });
 
-            const upgradeData = await upgradeResponse.json();
-            
-            // Don't fail if upgrade endpoint has issues - webhook will handle it
-            if (upgradeData.error) {
-              console.warn('Upgrade endpoint error:', upgradeData.error);
-            }
-          } catch (err) {
-            console.warn('Error calling upgrade endpoint:', err);
-            // Continue anyway - webhook will handle it
-          }
+        if (redirectError) {
+          setError(redirectError.message || 'Failed to redirect to checkout');
+          setLoading(false);
         }
-
-        // Refresh user session to get updated metadata
-        await supabase.auth.refreshSession();
-        
-        // Call success callback and close modal
-        // The page will update membership status through the auth state listener
-        onSuccess();
-        onClose();
-      } else if (paymentIntent?.status === 'requires_action') {
-        // Payment requires additional authentication
-        setError('Please complete the authentication steps shown by your bank.');
-        setLoading(false);
-      } else {
-        setError('Payment did not complete successfully');
-        setLoading(false);
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during payment');
+      setError(err.message || 'Failed to initialize payment');
       setLoading(false);
     }
   };
 
-  const cardElementOptions = {
-    style: {
-      base: {
-        fontSize: '16px',
-        color: '#2c2c2c',
-        fontFamily: 'var(--font-inter), system-ui, sans-serif',
-        '::placeholder': {
-          color: '#aab7c4',
-        },
-      },
-      invalid: {
-        color: '#fa755a',
-        iconColor: '#fa755a',
-      },
-    },
-  };
-
-  if (!clientSecret) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        {error ? (
-          <>
-            <p style={{ color: '#c33', fontFamily: 'var(--font-inter)', marginBottom: '1rem' }}>
-              {error}
-            </p>
-            <button
-              onClick={onClose}
-              style={{
-                padding: '8px 16px',
-                fontSize: '0.9rem',
-                fontFamily: 'var(--font-inter)',
-                borderRadius: '6px',
-                border: '1px solid #ccc',
-                backgroundColor: 'white',
-                color: 'var(--text-dark)',
-                cursor: 'pointer',
-              }}
-            >
-              Close
-            </button>
-          </>
-        ) : (
-          <p style={{ color: 'var(--text-light)', fontFamily: 'var(--font-inter)' }}>
-            Initializing payment...
-          </p>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <label
-          style={{
-            display: 'block',
-            marginBottom: '0.5rem',
-            fontSize: '0.95rem',
-            fontWeight: 400,
-            color: 'var(--text-light)',
-            fontFamily: 'var(--font-inter)',
-          }}
-        >
-          Card Information
-        </label>
-        <div
-          style={{
-            padding: '12px',
-            border: '1px solid #ccc',
-            borderRadius: '8px',
-            backgroundColor: 'white',
-          }}
-        >
-          <CardElement options={cardElementOptions} />
-        </div>
-      </div>
-
+    <div style={{ width: '100%' }}>
       {error && (
         <div
           style={{
@@ -295,7 +145,8 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
           Cancel
         </button>
         <button
-          type="submit"
+          type="button"
+          onClick={handleCheckout}
           disabled={!stripe || loading}
           style={{
             padding: '12px 24px',
@@ -312,10 +163,10 @@ function CheckoutForm({ onClose, userId, onSuccess }: { onClose: () => void; use
             transition: 'background-color 0.2s ease',
           }}
         >
-          {loading ? 'Processing...' : 'Complete Payment'}
+          {loading ? 'Redirecting...' : 'Proceed to Checkout'}
         </button>
       </div>
-    </form>
+    </div>
   );
 }
 
