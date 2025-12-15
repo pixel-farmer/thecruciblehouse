@@ -514,9 +514,12 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                       >
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                       </svg>
-                      {artworkLikes.get(artwork.id)?.likeCount > 0 && (
-                        <span className={styles.heartCount}>{artworkLikes.get(artwork.id)?.likeCount}</span>
-                      )}
+                      {(() => {
+                        const likeInfo = artworkLikes.get(artwork.id);
+                        return likeInfo && likeInfo.likeCount > 0 ? (
+                          <span className={styles.heartCount}>{likeInfo.likeCount}</span>
+                        ) : null;
+                      })()}
                     </button>
                     <div className={styles.galleryOverlay}>
                       {artwork.title && <h3>{artwork.title}</h3>}
