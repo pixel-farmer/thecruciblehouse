@@ -100,6 +100,7 @@ export default function Home() {
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>The Crucible House</h1>
             <p className={styles.heroSubtitle}>Where Art and Connections are Forged!</p>
+            <p className={styles.heroTagline}>(AI-Free Zone)</p>
             <Link href="/artist" className={styles.ctaButton}>
               View Artists
             </Link>
