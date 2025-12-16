@@ -161,9 +161,30 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error('Upload error response:', errorData);
-          throw new Error(errorData.error || 'Failed to upload artwork');
+          let errorMessage = 'Failed to upload artwork';
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.error || errorMessage;
+            console.error('Upload error response:', errorData);
+          } catch (jsonError) {
+            // If response is not JSON, try to get text
+            try {
+              const errorText = await response.text();
+              console.error('Upload error response (non-JSON):', errorText);
+              // Check for common error messages
+              if (errorText.includes('Request Entity Too Large') || response.status === 413) {
+                errorMessage = 'File is too large. Maximum file size is 10MB.';
+              } else if (response.status === 413) {
+                errorMessage = 'File is too large. Please try a smaller image.';
+              } else {
+                errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+              }
+            } catch (textError) {
+              // If we can't read the response at all, use status
+              errorMessage = `Upload failed: ${response.status} ${response.statusText}`;
+            }
+          }
+          throw new Error(errorMessage);
         }
 
         uploadedCount++;
