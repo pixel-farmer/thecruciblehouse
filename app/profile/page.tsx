@@ -257,6 +257,45 @@ export default function ProfilePage() {
     setEditingMedium('');
   };
 
+  const handleDeleteArtwork = async (artworkId: string) => {
+    if (!confirm('Are you sure you want to delete this artwork? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        alert('You must be logged in to delete artwork.');
+        return;
+      }
+
+      const response = await fetch(`/api/artwork/${artworkId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete artwork');
+      }
+
+      // Remove from local state
+      setUserArtwork(userArtwork.filter((artwork: any) => artwork.id !== artworkId));
+      
+      // If this was the gallery image, clear it
+      if (galleryImageId === artworkId) {
+        setGalleryImageId(null);
+      }
+      
+      alert('Artwork deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting artwork:', error);
+      alert(error.message || 'Failed to delete artwork. Please try again.');
+    }
+  };
+
   const handleUpdateArtwork = async (artworkId: string) => {
     try {
       setUpdatingArtwork(true);
@@ -810,7 +849,7 @@ export default function ProfilePage() {
                                   onChange={() => handleGalleryImageChange(artwork.id)}
                                   className={styles.radioInput}
                                 />
-                                <span>Gallery Image</span>
+                                <span>Gallery</span>
                               </label>
                             </div>
                             {editingArtworkId === artwork.id ? (
@@ -861,13 +900,37 @@ export default function ProfilePage() {
                               </div>
                             ) : (
                               <>
-                                <button
-                                  onClick={() => handleEditArtwork(artwork)}
-                                  className={styles.editArtworkButton}
-                                  title="Edit artwork"
-                                >
-                                  ✏️
-                                </button>
+                                <div style={{ 
+                                  position: 'absolute', 
+                                  top: '8px', 
+                                  right: '8px', 
+                                  zIndex: 10,
+                                  display: 'flex', 
+                                  gap: '0.5rem' 
+                                }}>
+                                  <button
+                                    onClick={() => handleEditArtwork(artwork)}
+                                    className={styles.editArtworkButton}
+                                    title="Edit artwork"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleDeleteArtwork(artwork.id);
+                                    }}
+                                    className={styles.editArtworkButton}
+                                    title="Delete artwork"
+                                    style={{
+                                      backgroundColor: '#fee2e2',
+                                      color: '#dc2626',
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
                                 <Link
                                   href={`/artist/${artistSlug}`}
                                   className={styles.artworkItemLink}

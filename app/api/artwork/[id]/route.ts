@@ -110,3 +110,101 @@ export async function PATCH(
   }
 }
 
+// DELETE: Delete artwork
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await createAuthenticatedSupabaseClient(request);
+    
+    // Get the current user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in.' },
+        { status: 401 }
+      );
+    }
+
+    // Get artwork to verify ownership and get image URL
+    const { data: artwork, error: fetchError } = await supabase
+      .from('artwork')
+      .select('id, image_url, user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !artwork) {
+      return NextResponse.json(
+        { error: 'Artwork not found' },
+        { status: 404 }
+      );
+    }
+
+    // Verify user owns the artwork
+    if (artwork.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'You do not have permission to delete this artwork.' },
+        { status: 403 }
+      );
+    }
+
+    // Extract file path from image_url for storage deletion
+    let storagePath: string | null = null;
+    if (artwork.image_url) {
+      // Extract path from Supabase storage URL
+      // URL format: https://[project].supabase.co/storage/v1/object/public/artwork/[path]
+      const urlMatch = artwork.image_url.match(/\/artwork\/(.+)$/);
+      if (urlMatch) {
+        storagePath = `artwork/${urlMatch[1]}`;
+      }
+    }
+
+    // Delete from storage if path exists
+    if (storagePath) {
+      const { error: storageError } = await supabase.storage
+        .from('artwork')
+        .remove([storagePath]);
+      
+      if (storageError) {
+        console.error('[artwork/[id] DELETE] Storage error:', storageError);
+        // Continue with database deletion even if storage deletion fails
+      }
+    }
+
+    // Delete from database
+    const { error: deleteError } = await supabase
+      .from('artwork')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id); // Extra safety check
+
+    if (deleteError) {
+      console.error('[artwork/[id] DELETE] Database error:', deleteError);
+      return NextResponse.json(
+        {
+          error: 'Failed to delete artwork',
+          details: deleteError.message,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Artwork deleted successfully',
+    });
+  } catch (error) {
+    console.error('[artwork/[id] DELETE] Exception:', error);
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
