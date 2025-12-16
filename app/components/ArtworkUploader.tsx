@@ -17,10 +17,16 @@ interface ToastState {
   message: string;
 }
 
+interface FileMetadata {
+  title: string;
+  medium: string;
+}
+
 export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: ArtworkUploaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
+  const [fileMetadata, setFileMetadata] = useState<FileMetadata[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [toast, setToast] = useState<ToastState>({ show: false, message: '' });
@@ -74,6 +80,8 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
     // Wait for all previews to load, then update state
     Promise.all(filePromises).then((newPreviews) => {
       setPreviews((prev) => [...prev, ...newPreviews]);
+      // Initialize metadata for new files
+      setFileMetadata((prev) => [...prev, ...validFiles.map(() => ({ title: '', medium: '' }))]);
     });
 
     setSelectedFiles((prev) => [...prev, ...validFiles]);
@@ -105,8 +113,16 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
   const removeFile = (index: number) => {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     const newPreviews = previews.filter((_, i) => i !== index);
+    const newMetadata = fileMetadata.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
     setPreviews(newPreviews);
+    setFileMetadata(newMetadata);
+  };
+
+  const updateMetadata = (index: number, field: 'title' | 'medium', value: string) => {
+    const newMetadata = [...fileMetadata];
+    newMetadata[index] = { ...newMetadata[index], [field]: value };
+    setFileMetadata(newMetadata);
   };
 
   const handleUpload = async () => {
@@ -126,8 +142,15 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
+        const metadata = fileMetadata[i] || { title: '', medium: '' };
         const formData = new FormData();
         formData.append('file', file);
+        if (metadata.title) {
+          formData.append('title', metadata.title);
+        }
+        if (metadata.medium) {
+          formData.append('medium', metadata.medium);
+        }
 
         const response = await fetch('/api/artwork', {
           method: 'POST',
@@ -150,6 +173,7 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
       // Reset state
       setSelectedFiles([]);
       setPreviews([]);
+      setFileMetadata([]);
       setIsOpen(false);
       showToast('Artwork added!');
       
@@ -174,6 +198,7 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
       setIsOpen(false);
       setSelectedFiles([]);
       setPreviews([]);
+      setFileMetadata([]);
       setIsDragging(false);
     }
   };
@@ -321,6 +346,26 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
                             <p className={styles.thumbnailName}>
                               {selectedFiles[index]?.name || `Image ${index + 1}`}
                             </p>
+                            <div className={styles.metadataFields}>
+                              <input
+                                type="text"
+                                placeholder="Title (optional)"
+                                value={fileMetadata[index]?.title || ''}
+                                onChange={(e) => updateMetadata(index, 'title', e.target.value)}
+                                className={styles.metadataInput}
+                                disabled={uploading}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Medium (optional)"
+                                value={fileMetadata[index]?.medium || ''}
+                                onChange={(e) => updateMetadata(index, 'medium', e.target.value)}
+                                className={styles.metadataInput}
+                                disabled={uploading}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>

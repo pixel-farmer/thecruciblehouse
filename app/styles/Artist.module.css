@@ -61,6 +61,11 @@
   gap: 30px;
 }
 
+.galleryItemWrapper {
+  display: flex;
+  flex-direction: column;
+}
+
 .galleryItem {
   position: relative;
   cursor: pointer;
@@ -120,6 +125,16 @@
 .galleryOverlay p {
   font-size: 0.9rem;
   opacity: 0.9;
+}
+
+.galleryItemInfo {
+  margin-top: 12px;
+  color: var(--text-dark);
+  font-family: var(--font-inter);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 0 8px;
+  line-height: 1.4;
 }
 
 .heartButton {

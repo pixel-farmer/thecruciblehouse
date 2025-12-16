@@ -456,53 +456,66 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
             <div className={styles.galleryGrid}>
               {artist.artwork.map((artwork: any, index: number) => (
                 <ScrollAnimation key={artwork.id} delay={index * 0.1}>
-                  <div 
-                    className={styles.galleryItem} 
-                    data-category="artwork"
-                    onClick={() => artwork.image_url && setSelectedImage(artwork.image_url)}
-                  >
-                    {artwork.image_url ? (
-                      <Image
-                        src={artwork.image_url}
-                        alt={artwork.title || 'Artwork'}
-                        width={1024}
-                        height={1024}
-                        className={styles.galleryImage}
-                      />
-                    ) : (
-                      <div className={styles.galleryImagePlaceholder}>
-                        <span>Artwork</span>
+                  <div className={styles.galleryItemWrapper}>
+                    <div 
+                      className={styles.galleryItem} 
+                      data-category="artwork"
+                      onClick={() => artwork.image_url && setSelectedImage(artwork.image_url)}
+                    >
+                      {artwork.image_url ? (
+                        <Image
+                          src={artwork.image_url}
+                          alt={artwork.title || 'Artwork'}
+                          width={1024}
+                          height={1024}
+                          className={styles.galleryImage}
+                        />
+                      ) : (
+                        <div className={styles.galleryImagePlaceholder}>
+                          <span>Artwork</span>
+                        </div>
+                      )}
+                      <button
+                        className={styles.heartButton}
+                        onClick={(e) => handleLikeArtwork(artwork.id, e)}
+                        disabled={likingArtworkId === artwork.id}
+                        aria-label={artworkLikes.get(artwork.id)?.isLiked ? 'Unlike artwork' : 'Like artwork'}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'none'}
+                          stroke={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'white'}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                        </svg>
+                        {(() => {
+                          const likeInfo = artworkLikes.get(artwork.id);
+                          return likeInfo && likeInfo.likeCount > 0 ? (
+                            <span className={styles.heartCount}>{likeInfo.likeCount}</span>
+                          ) : null;
+                        })()}
+                      </button>
+                      <div className={styles.galleryOverlay}>
+                        {artwork.title && <h3>{artwork.title}</h3>}
+                        {artwork.medium && <p>{artwork.medium}</p>}
+                      </div>
+                    </div>
+                    {(artwork.title || artwork.medium) && (
+                      <div className={styles.galleryItemInfo}>
+                        {artwork.title && artwork.medium ? (
+                          `${artwork.title}, ${artwork.medium}`
+                        ) : artwork.title ? (
+                          artwork.title
+                        ) : (
+                          artwork.medium
+                        )}
                       </div>
                     )}
-                    <button
-                      className={styles.heartButton}
-                      onClick={(e) => handleLikeArtwork(artwork.id, e)}
-                      disabled={likingArtworkId === artwork.id}
-                      aria-label={artworkLikes.get(artwork.id)?.isLiked ? 'Unlike artwork' : 'Like artwork'}
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'none'}
-                        stroke={artworkLikes.get(artwork.id)?.isLiked ? '#ff6622' : 'white'}
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                      </svg>
-                      {(() => {
-                        const likeInfo = artworkLikes.get(artwork.id);
-                        return likeInfo && likeInfo.likeCount > 0 ? (
-                          <span className={styles.heartCount}>{likeInfo.likeCount}</span>
-                        ) : null;
-                      })()}
-                    </button>
-                    <div className={styles.galleryOverlay}>
-                      {artwork.title && <h3>{artwork.title}</h3>}
-                      {artwork.medium && <p>{artwork.medium}</p>}
-                    </div>
                   </div>
                 </ScrollAnimation>
               ))}

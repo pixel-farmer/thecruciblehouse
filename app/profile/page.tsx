@@ -25,6 +25,10 @@ export default function ProfilePage() {
   const [userArtwork, setUserArtwork] = useState<any[]>([]);
   const [artworkLoading, setArtworkLoading] = useState(true);
   const [galleryImageId, setGalleryImageId] = useState<string | null>(null);
+  const [editingArtworkId, setEditingArtworkId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const [editingMedium, setEditingMedium] = useState('');
+  const [updatingArtwork, setUpdatingArtwork] = useState(false);
   const [userMeetups, setUserMeetups] = useState<any[]>([]);
   const [meetupsLoading, setMeetupsLoading] = useState(true);
   const [userExhibitions, setUserExhibitions] = useState<any[]>([]);
@@ -238,6 +242,54 @@ export default function ProfilePage() {
       console.error('Error fetching user artwork:', error);
     } finally {
       setArtworkLoading(false);
+    }
+  };
+
+  const handleEditArtwork = (artwork: any) => {
+    setEditingArtworkId(artwork.id);
+    setEditingTitle(artwork.title || '');
+    setEditingMedium(artwork.medium || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingArtworkId(null);
+    setEditingTitle('');
+    setEditingMedium('');
+  };
+
+  const handleUpdateArtwork = async (artworkId: string) => {
+    try {
+      setUpdatingArtwork(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(`/api/artwork/${artworkId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          title: editingTitle.trim() || null,
+          medium: editingMedium.trim() || null,
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh artwork list
+        if (user?.id) {
+          await fetchUserArtwork(user.id);
+        }
+        handleCancelEdit();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update artwork');
+      }
+    } catch (error) {
+      console.error('Error updating artwork:', error);
+      alert('Failed to update artwork. Please try again.');
+    } finally {
+      setUpdatingArtwork(false);
     }
   };
 
@@ -761,23 +813,84 @@ export default function ProfilePage() {
                                 <span>Gallery Image</span>
                               </label>
                             </div>
-                            <Link
-                              href={`/artist/${artistSlug}`}
-                              className={styles.artworkItemLink}
-                            >
-                              <div className={styles.artworkItem}>
-                                <Image
-                                  src={artwork.image_url}
-                                  alt={artwork.title || 'Artwork'}
-                                  width={300}
-                                  height={300}
-                                  className={styles.artworkImage}
-                                />
-                                {artwork.title && (
-                                  <p className={styles.artworkItemTitle}>{artwork.title}</p>
-                                )}
+                            {editingArtworkId === artwork.id ? (
+                              <div className={styles.artworkEditForm}>
+                                <div className={styles.artworkItem}>
+                                  <Image
+                                    src={artwork.image_url}
+                                    alt={artwork.title || 'Artwork'}
+                                    width={300}
+                                    height={300}
+                                    className={styles.artworkImage}
+                                  />
+                                </div>
+                                <div className={styles.editFormFields}>
+                                  <input
+                                    type="text"
+                                    placeholder="Title"
+                                    value={editingTitle}
+                                    onChange={(e) => setEditingTitle(e.target.value)}
+                                    className={styles.editInput}
+                                    disabled={updatingArtwork}
+                                  />
+                                  <input
+                                    type="text"
+                                    placeholder="Medium"
+                                    value={editingMedium}
+                                    onChange={(e) => setEditingMedium(e.target.value)}
+                                    className={styles.editInput}
+                                    disabled={updatingArtwork}
+                                  />
+                                  <div className={styles.editFormActions}>
+                                    <button
+                                      onClick={() => handleUpdateArtwork(artwork.id)}
+                                      className={styles.saveButton}
+                                      disabled={updatingArtwork}
+                                    >
+                                      {updatingArtwork ? 'Saving...' : 'Save'}
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className={styles.cancelEditButton}
+                                      disabled={updatingArtwork}
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                            </Link>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleEditArtwork(artwork)}
+                                  className={styles.editArtworkButton}
+                                  title="Edit artwork"
+                                >
+                                  ✏️
+                                </button>
+                                <Link
+                                  href={`/artist/${artistSlug}`}
+                                  className={styles.artworkItemLink}
+                                >
+                                  <div className={styles.artworkItem}>
+                                    <Image
+                                      src={artwork.image_url}
+                                      alt={artwork.title || 'Artwork'}
+                                      width={300}
+                                      height={300}
+                                      className={styles.artworkImage}
+                                    />
+                                    {(artwork.title || artwork.medium) && (
+                                      <p className={styles.artworkItemTitle}>
+                                        {artwork.title && artwork.medium
+                                          ? `${artwork.title}, ${artwork.medium}`
+                                          : artwork.title || artwork.medium}
+                                      </p>
+                                    )}
+                                  </div>
+                                </Link>
+                              </>
+                            )}
                           </div>
                         ))}
                       </div>

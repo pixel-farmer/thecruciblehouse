@@ -1027,6 +1027,108 @@
   text-align: center;
 }
 
+.editArtworkButton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.editArtworkButton:hover {
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.artworkEditForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.editFormFields {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editInput {
+  padding: 8px 12px;
+  font-family: var(--font-inter);
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.editInput:focus {
+  border-color: #ff6622;
+}
+
+.editInput:disabled {
+  background-color: var(--secondary-color);
+  cursor: not-allowed;
+}
+
+.editFormActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.saveButton {
+  flex: 1;
+  padding: 8px 16px;
+  background-color: #ff6622;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font-inter);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.saveButton:hover:not(:disabled) {
+  background-color: #e55a1a;
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelEditButton {
+  flex: 1;
+  padding: 8px 16px;
+  background-color: transparent;
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-family: var(--font-inter);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cancelEditButton:hover:not(:disabled) {
+  background-color: var(--secondary-color);
+}
+
+.cancelEditButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .commissionsSection {
   background-color: transparent;
   padding: 40px;
