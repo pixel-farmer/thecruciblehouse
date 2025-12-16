@@ -1269,7 +1269,7 @@ export default function ProfilePage() {
                                 color: 'var(--text-dark)',
                                 margin: '0 0 0.5rem 0',
                               }}>
-                                Pro Membership
+                                {isFounder ? 'Founder Membership' : 'Pro Membership'}
                               </h5>
                               <p style={{
                                 fontFamily: 'var(--font-inter)',
@@ -1277,7 +1277,7 @@ export default function ProfilePage() {
                                 color: 'var(--text-light)',
                                 margin: '0 0 0.75rem 0',
                               }}>
-                                $8/month
+                                {isFounder ? 'Lifetime' : '$8/month'}
                               </p>
                               {!subscriptionStatus?.subscription?.cancel_at_period_end && (
                                 <button
