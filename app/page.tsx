@@ -30,6 +30,18 @@ export default function Home() {
   const [loadingArtists, setLoadingArtists] = useState(true);
   const [featuredArtwork, setFeaturedArtwork] = useState<FeaturedArtwork[]>([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
+  const [particles, setParticles] = useState<Array<{left: number; delay: number; duration: number}>>([]);
+  
+  // Generate particle positions only on client to avoid hydration mismatch
+  useEffect(() => {
+    setParticles(
+      Array.from({ length: 25 }).map(() => ({
+        left: Math.random() * 100,
+        delay: Math.random() * 20,
+        duration: 20 + Math.random() * 15
+      }))
+    );
+  }, []);
 
   useEffect(() => {
     // Check if we have authentication tokens in the URL hash
@@ -96,6 +108,15 @@ export default function Home() {
     >
       <section className={styles.hero}>
         <div className={styles.heatGradient}></div>
+        <div className={styles.particles}>
+          {particles.map((particle, i) => (
+            <div key={i} className={styles.particle} style={{
+              left: `${particle.left}%`,
+              animationDelay: `${particle.delay}s`,
+              animationDuration: `${particle.duration}s`
+            }}></div>
+          ))}
+        </div>
         <ScrollAnimation>
           <div className={styles.heroContent}>
             <h1 className={styles.heroTitle}>The Crucible House</h1>
