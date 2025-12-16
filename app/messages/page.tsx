@@ -22,6 +22,7 @@ interface Conversation {
     name: string;
     avatar: string | null;
     isPro?: boolean;
+    isFounder?: boolean;
   };
   unreadCount: number;
   lastMessage: {
