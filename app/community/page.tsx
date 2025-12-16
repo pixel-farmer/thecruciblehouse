@@ -10,6 +10,8 @@ import ScrollAnimation from '../components/ScrollAnimation';
 import UpgradeModal from '../components/UpgradeModal';
 import HostMeetupModal from '../components/HostMeetupModal';
 import HostExhibitModal from '../components/HostExhibitModal';
+import CreateGroupModal from '../components/CreateGroupModal';
+import EditGroupModal from '../components/EditGroupModal';
 import ProBadge from '../components/ProBadge';
 import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Community.module.css';
@@ -45,6 +47,8 @@ function CommunityPageContent() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showHostMeetupModal, setShowHostMeetupModal] = useState(false);
   const [showHostExhibitModal, setShowHostExhibitModal] = useState(false);
+  const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
+  const [showEditGroupModal, setShowEditGroupModal] = useState(false);
   const [meetups, setMeetups] = useState<any[]>([]);
   const [meetupsLoading, setMeetupsLoading] = useState(true);
   const [selectedMeetup, setSelectedMeetup] = useState<any | null>(null);
@@ -1233,6 +1237,15 @@ function CommunityPageContent() {
                       ))}
                     </div>
                   )}
+                  {/* Create Group Button - Only for Pro/Founder users */}
+                  {(hasPaidMembership || isFounder) && (
+                    <button
+                      onClick={() => setShowCreateGroupModal(true)}
+                      className={styles.createGroupButton}
+                    >
+                      Create a Group
+                    </button>
+                  )}
                 </div>
               </ScrollAnimation>
             </div>
@@ -1246,10 +1259,12 @@ function CommunityPageContent() {
                     borderRadius: '12px',
                     padding: '2rem',
                     boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                    position: 'relative',
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                    <div style={{ marginBottom: '0.5rem' }}>
                       <h2 style={{ 
                         margin: 0, 
+                        marginBottom: '-0.5rem',
                         fontFamily: 'var(--font-inter)', 
                         fontSize: '1.75rem', 
                         fontWeight: 600, 
@@ -1257,45 +1272,49 @@ function CommunityPageContent() {
                       }}>
                         {selectedGroup.name}
                       </h2>
-                      <button
-                        onClick={() => {
-                          setSelectedGroup(null);
-                          setSelectedMeetup(null);
-                        }}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          fontSize: '1.5rem',
-                          cursor: 'pointer',
-                          color: 'var(--text-light)',
-                          padding: '0',
-                          width: '30px',
-                          height: '30px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '50%',
-                          transition: 'background-color 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        ×
-                      </button>
                     </div>
+                    <button
+                      onClick={() => {
+                        setSelectedGroup(null);
+                        setSelectedMeetup(null);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: '2rem',
+                        right: '2rem',
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '1.5rem',
+                        cursor: 'pointer',
+                        color: 'var(--text-light)',
+                        padding: '0',
+                        width: '30px',
+                        height: '30px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: '50%',
+                        transition: 'background-color 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(0, 0, 0, 0.05)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                    >
+                      ×
+                    </button>
 
                     {selectedGroup.description && (
                       <div style={{ 
-                        marginBottom: '2rem',
-                        paddingBottom: '2rem',
+                        marginBottom: '1.5rem',
+                        paddingBottom: '1.5rem',
                         borderBottom: '1px solid #eee',
                       }}>
                         <p style={{ 
                           margin: 0,
+                          marginBottom: '1.5rem',
                           fontFamily: 'var(--font-inter)',
                           fontSize: '1rem',
                           lineHeight: '1.6',
@@ -1303,6 +1322,194 @@ function CommunityPageContent() {
                         }}>
                           {selectedGroup.description}
                         </p>
+                        {selectedGroup.creator_name && (
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}>
+                            <p style={{
+                              margin: 0,
+                              fontFamily: 'var(--font-inter)',
+                              fontSize: '0.85rem',
+                              color: 'var(--text-light)',
+                              fontStyle: 'italic',
+                            }}>
+                              Created by {selectedGroup.creator_name}
+                            </p>
+                            {selectedGroup.creator_id === userId && (
+                              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button
+                                  onClick={() => setShowEditGroupModal(true)}
+                                  style={{
+                                    padding: '0.25rem 0.75rem',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontSize: '0.8rem',
+                                    color: 'var(--text-dark)',
+                                    backgroundColor: 'transparent',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'var(--secondary-color)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+                                      return;
+                                    }
+                                    try {
+                                      const { data: { session } } = await supabase.auth.getSession();
+                                      if (!session) return;
+
+                                      const response = await fetch(`/api/groups/${selectedGroup.id}`, {
+                                        method: 'DELETE',
+                                        headers: {
+                                          'Authorization': `Bearer ${session.access_token}`,
+                                        },
+                                      });
+
+                                      if (response.ok) {
+                                        setSelectedGroup(null);
+                                        fetchGroups();
+                                      } else {
+                                        const errorData = await response.json();
+                                        alert(errorData.error || 'Failed to delete group');
+                                      }
+                                    } catch (error) {
+                                      console.error('Error deleting group:', error);
+                                      alert('Failed to delete group. Please try again.');
+                                    }
+                                  }}
+                                  style={{
+                                    padding: '0.25rem 0.75rem',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontSize: '0.8rem',
+                                    color: '#ef4444',
+                                    backgroundColor: 'transparent',
+                                    border: '1px solid #ef4444',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#fee2e2';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!selectedGroup.description && selectedGroup.creator_name && (
+                      <div style={{ 
+                        marginBottom: '1.5rem',
+                        paddingBottom: '1.5rem',
+                        borderBottom: '1px solid #eee',
+                      }}>
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}>
+                          <p style={{
+                            margin: 0,
+                            fontFamily: 'var(--font-inter)',
+                            fontSize: '0.85rem',
+                            color: 'var(--text-light)',
+                            fontStyle: 'italic',
+                          }}>
+                            Created by {selectedGroup.creator_name}
+                          </p>
+                          {selectedGroup.creator_id === userId && (
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button
+                                onClick={() => setShowEditGroupModal(true)}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  fontFamily: 'var(--font-inter)',
+                                  fontSize: '0.8rem',
+                                  color: 'var(--text-dark)',
+                                  backgroundColor: 'transparent',
+                                  border: '1px solid var(--border-color)',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'var(--secondary-color)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
+                                    return;
+                                  }
+                                  try {
+                                    const { data: { session } } = await supabase.auth.getSession();
+                                    if (!session) return;
+
+                                    const response = await fetch(`/api/groups/${selectedGroup.id}`, {
+                                      method: 'DELETE',
+                                      headers: {
+                                        'Authorization': `Bearer ${session.access_token}`,
+                                      },
+                                    });
+
+                                    if (response.ok) {
+                                      setSelectedGroup(null);
+                                      fetchGroups();
+                                    } else {
+                                      const errorData = await response.json();
+                                      alert(errorData.error || 'Failed to delete group');
+                                    }
+                                  } catch (error) {
+                                    console.error('Error deleting group:', error);
+                                    alert('Failed to delete group. Please try again.');
+                                  }
+                                }}
+                                style={{
+                                  padding: '0.25rem 0.75rem',
+                                  fontFamily: 'var(--font-inter)',
+                                  fontSize: '0.8rem',
+                                  color: '#ef4444',
+                                  backgroundColor: 'transparent',
+                                  border: '1px solid #ef4444',
+                                  borderRadius: '4px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = '#fee2e2';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     
@@ -2490,6 +2697,44 @@ function CommunityPageContent() {
           fetchExhibitions();
         }}
       />
+
+      {/* Create Group Modal */}
+      <CreateGroupModal
+        isOpen={showCreateGroupModal}
+        onClose={() => setShowCreateGroupModal(false)}
+        onSuccess={() => {
+          // Refresh groups list when a new one is created
+          fetchGroups();
+        }}
+      />
+
+      {/* Edit Group Modal */}
+      {selectedGroup && (
+        <EditGroupModal
+          isOpen={showEditGroupModal}
+          onClose={() => setShowEditGroupModal(false)}
+          onSuccess={async () => {
+            // Refresh groups list
+            await fetchGroups();
+            // Refetch selected group data
+            if (selectedGroup?.id) {
+              const response = await fetch('/api/groups');
+              if (response.ok) {
+                const data = await response.json();
+                const updatedGroup = data.groups?.find((g: any) => g.id === selectedGroup.id);
+                if (updatedGroup) {
+                  setSelectedGroup(updatedGroup);
+                }
+              }
+            }
+          }}
+          group={{
+            id: selectedGroup.id,
+            name: selectedGroup.name,
+            description: selectedGroup.description || null,
+          }}
+        />
+      )}
 
       {/* Sign In Message Modal */}
       {showSignInMessage && (

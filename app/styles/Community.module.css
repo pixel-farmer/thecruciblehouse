@@ -71,6 +71,31 @@
   gap: 15px;
 }
 
+.createGroupButton {
+  width: 100%;
+  padding: 10px 20px;
+  margin-top: 15px;
+  background-color: #ff6622;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.createGroupButton:hover {
+  background-color: #e55a1a;
+}
+
+.createGroupButton:active {
+  transform: translateY(1px);
+}
+
 .memberItem {
   display: flex;
   align-items: center;
