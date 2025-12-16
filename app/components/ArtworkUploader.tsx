@@ -140,11 +140,93 @@ export default function ArtworkUploader({ onUploadSuccess, artworkCount = 0 }: A
       const totalFiles = selectedFiles.length;
       let uploadedCount = 0;
 
+      // Image resizing function for artwork (higher quality than posts)
+      const resizeImage = (file: File): Promise<File> => {
+        return new Promise((resolve, reject) => {
+          // If file is already small enough, skip resizing
+          const maxSize = 4 * 1024 * 1024; // 4MB limit to stay under Next.js 4.5MB body limit
+          if (file.size <= maxSize) {
+            resolve(file);
+            return;
+          }
+
+          const img = new window.Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // Resize if larger than max width (2000px for artwork quality)
+            const maxWidth = 2000;
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              reject(new Error('Could not get canvas context'));
+              return;
+            }
+
+            // Use high-quality rendering
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Convert to blob with high quality compression
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // If still too large, compress more aggressively
+                if (blob.size > maxSize) {
+                  canvas.toBlob((compressedBlob) => {
+                    if (compressedBlob) {
+                      // Convert blob back to File
+                      const resizedFile = new File([compressedBlob], file.name, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now(),
+                      });
+                      resolve(resizedFile);
+                    } else {
+                      resolve(file); // Fallback to original if compression fails
+                    }
+                  }, 'image/jpeg', 0.85);
+                } else {
+                  // Convert blob back to File
+                  const resizedFile = new File([blob], file.name, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now(),
+                  });
+                  resolve(resizedFile);
+                }
+              } else {
+                reject(new Error('Failed to convert image'));
+              }
+            }, 'image/jpeg', 0.92); // Higher quality for artwork
+          };
+          img.onerror = () => reject(new Error('Failed to load image'));
+          img.src = URL.createObjectURL(file);
+        });
+      };
+
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const metadata = fileMetadata[i] || { title: '', medium: '' };
+        
+        // Resize image if needed before uploading
+        let fileToUpload = file;
+        try {
+          fileToUpload = await resizeImage(file);
+        } catch (resizeError) {
+          console.error('Error resizing image:', resizeError);
+          // Continue with original file if resize fails
+        }
+
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', fileToUpload);
         if (metadata.title) {
           formData.append('title', metadata.title);
         }
