@@ -105,11 +105,12 @@ export async function GET(
     const statePublic = user.user_metadata?.state_public !== false;
     const countryPublic = user.user_metadata?.country_public !== false;
 
-    // Check if artist is pro
+    // Check if artist is pro or founder
     const userMetadata = user.user_metadata || {};
     const membershipStatus = userMetadata.membership_status;
     const hasPaidMembership = userMetadata.has_paid_membership;
-    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+    const isFounder = userMetadata.is_founder === true;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
 
     const discipline = user.user_metadata?.discipline || null;
     const portfolioUrl = user.user_metadata?.portfolio_url || null;
@@ -129,6 +130,7 @@ export async function GET(
       country: country && countryPublic ? country : null,
       created_at: user.created_at || null,
       isPro: isPro,
+      isFounder: isFounder,
     };
 
     return NextResponse.json({ artist });

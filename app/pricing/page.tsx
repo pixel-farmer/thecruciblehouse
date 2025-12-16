@@ -16,9 +16,11 @@ export default function PricingPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setIsLoggedIn(true);
-        const membershipStatus = session.user.user_metadata?.membership_status;
-        const hasPaidMembership = session.user.user_metadata?.has_paid_membership;
-        setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true);
+        const userMetadata = session.user.user_metadata || {};
+        const membershipStatus = userMetadata.membership_status;
+        const hasPaidMembership = userMetadata.has_paid_membership;
+        const isFounder = userMetadata.is_founder === true;
+        setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true || isFounder);
       } else {
         setIsLoggedIn(false);
         setHasProMembership(false);

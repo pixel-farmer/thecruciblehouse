@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
     
     // Fetch user metadata including membership status
     // Use service role key for admin access if available
-    let userMembershipMap = new Map<string, boolean>();
+    let userMembershipMap = new Map<string, { isPro: boolean; isFounder: boolean }>();
     
     if (supabaseServiceKey && userIds.length > 0) {
       try {
@@ -136,8 +136,9 @@ export async function GET(request: NextRequest) {
             const userMetadata = user.user_metadata || {};
             const membershipStatus = userMetadata.membership_status;
             const hasPaidMembership = userMetadata.has_paid_membership;
-            const isPro = membershipStatus === 'active' || hasPaidMembership === true;
-            userMembershipMap.set(user.id, isPro);
+            const isFounder = userMetadata.is_founder === true;
+            const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
+            userMembershipMap.set(user.id, { isPro, isFounder });
           });
         }
       } catch (error) {
@@ -147,10 +148,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Add membership status to each post
-    const postsWithMembership = (data || []).map((post: any) => ({
-      ...post,
-      user_is_pro: userMembershipMap.get(post.user_id) || false,
-    }));
+    const postsWithMembership = (data || []).map((post: any) => {
+      const membership = userMembershipMap.get(post.user_id) || { isPro: false, isFounder: false };
+      return {
+        ...post,
+        user_is_pro: membership.isPro,
+        user_is_founder: membership.isFounder,
+      };
+    });
 
     return NextResponse.json({ posts: postsWithMembership });
   } catch (error) {

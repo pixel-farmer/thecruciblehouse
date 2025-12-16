@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import ProBadge from '../components/ProBadge';
+import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Messages.module.css';
 
 interface Conversation {
@@ -424,7 +425,7 @@ function MessagesPageContent() {
                             {selectedConversation.otherUser.name.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        {selectedConversation.otherUser.isPro && <ProBadge size={14} />}
+                        {selectedConversation.otherUser.isFounder ? <FounderBadge size={14} /> : selectedConversation.otherUser.isPro && <ProBadge size={14} />}
                       </div>
                       <span className={styles.messagesHeaderName}>
                         {selectedConversation.otherUser.name}

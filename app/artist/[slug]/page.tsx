@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import styles from '../../styles/Artist.module.css';
 import ScrollAnimation from '../../components/ScrollAnimation';
 import ProBadge from '../../components/ProBadge';
+import FounderBadge from '../../components/FounderBadge';
 
 export default function ArtistDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -333,33 +334,10 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                         alignItems: 'center',
                         position: 'relative',
                         width: '14px',
-                        height: '14px'
+                        height: '14px',
+                        transform: 'translateY(-4px)'
                       }}>
-                        <span style={{
-                          position: 'relative',
-                          width: '14px',
-                          height: '14px',
-                          borderRadius: '50%',
-                          backgroundColor: '#ff6622',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          border: '1.5px solid white',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                        }}>
-                          <svg
-                            width="8"
-                            height="8"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="white"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                          </svg>
-                        </span>
+                        {artist.isFounder ? <FounderBadge size={14} /> : <ProBadge size={14} />}
                       </span>
                     )}
                   </div>

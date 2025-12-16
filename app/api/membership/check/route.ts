@@ -52,11 +52,14 @@ export async function GET(request: NextRequest) {
     }
 
     const userMetadata = user.user_metadata || {};
-    const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
-    const isPro = !!membershipStatus;
+    const membershipStatus = userMetadata.membership_status;
+    const hasPaidMembership = userMetadata.has_paid_membership;
+    const isFounder = userMetadata.is_founder === true;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
 
     return NextResponse.json({
       isPro,
+      isFounder,
       membership_status: userMetadata.membership_status || null,
       has_paid_membership: userMetadata.has_paid_membership || false,
       membership_purchased_at: userMetadata.membership_purchased_at || null,

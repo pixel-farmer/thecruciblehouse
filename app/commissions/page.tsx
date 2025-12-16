@@ -8,6 +8,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import ProBadge from '../components/ProBadge';
+import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Commissions.module.css';
 
 interface Commission {
@@ -95,7 +96,8 @@ export default function CommissionsPage() {
         const userMetadata = session.user.user_metadata;
         const membershipStatus = userMetadata?.membership_status;
         const hasPaidMembership = userMetadata?.has_paid_membership;
-        setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true);
+        const isFounder = userMetadata?.is_founder === true;
+        setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true || isFounder);
       } else {
         setHasProMembership(false);
       }
@@ -349,12 +351,12 @@ export default function CommissionsPage() {
                                   height={45}
                                   style={{ borderRadius: '50%', objectFit: 'cover' }}
                                 />
-                                {member.isPro && <ProBadge size={14} />}
+                                {member.isFounder ? <FounderBadge size={14} /> : member.isPro && <ProBadge size={14} />}
                               </div>
                             ) : (
                               <div className={styles.memberAvatar} style={{ position: 'relative' }}>
                                 {member.initials || 'U'}
-                                {member.isPro && <ProBadge size={14} />}
+                                {member.isFounder ? <FounderBadge size={14} /> : member.isPro && <ProBadge size={14} />}
                               </div>
                             )}
                             <div className={styles.memberInfo}>

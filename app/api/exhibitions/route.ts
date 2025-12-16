@@ -125,8 +125,10 @@ export async function POST(request: NextRequest) {
 
     // Verify user has pro membership
     const userMetadata = user.user_metadata || {};
-    const membershipStatus = userMetadata.membership_status || userMetadata.has_paid_membership;
-    const isPro = !!membershipStatus;
+    const membershipStatus = userMetadata.membership_status;
+    const hasPaidMembership = userMetadata.has_paid_membership;
+    const isFounder = userMetadata.is_founder === true;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
 
     if (!isPro) {
       return NextResponse.json(

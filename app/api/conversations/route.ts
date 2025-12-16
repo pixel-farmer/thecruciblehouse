@@ -118,7 +118,8 @@ export async function GET(request: NextRequest) {
         const otherUserMetadata = otherUser?.user_metadata || {};
         const membershipStatus = otherUserMetadata.membership_status;
         const hasPaidMembership = otherUserMetadata.has_paid_membership;
-        const otherUserIsPro = membershipStatus === 'active' || hasPaidMembership === true;
+        const isFounder = otherUserMetadata.is_founder === true;
+        const otherUserIsPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
 
         return {
           ...conv,
@@ -127,6 +128,7 @@ export async function GET(request: NextRequest) {
             name: otherUserDisplayName,
             avatar: otherUserAvatar,
             isPro: otherUserIsPro,
+            isFounder: isFounder,
           },
           unreadCount: unreadCount || 0,
           lastMessage: lastMessage || null,

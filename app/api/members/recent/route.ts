@@ -167,7 +167,8 @@ export async function GET(request: NextRequest) {
         const userMetadata = user.user_metadata || {};
         const membershipStatus = userMetadata.membership_status;
         const hasPaidMembership = userMetadata.has_paid_membership;
-        const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+        const isFounder = userMetadata.is_founder === true;
+        const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
 
         return {
           id: user.id,
@@ -177,6 +178,7 @@ export async function GET(request: NextRequest) {
           activity: activityText,
           slug,
           isPro: isPro,
+          isFounder: isFounder,
         };
       });
 

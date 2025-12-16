@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import ProBadge from './ProBadge';
+import FounderBadge from './FounderBadge';
 import styles from './Navigation.module.css';
 
 export default function Navigation() {
@@ -20,6 +22,7 @@ export default function Navigation() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [userInitials, setUserInitials] = useState<string>('');
   const [isPro, setIsPro] = useState(false);
+  const [isFounder, setIsFounder] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [conversations, setConversations] = useState<any[]>([]);
   const isLoggingOutRef = useRef(false);
@@ -42,11 +45,13 @@ export default function Navigation() {
                          session.user.identities?.[0]?.identity_data?.avatar_url;
         setUserAvatar(avatarUrl || null);
         
-        // Check pro membership
+        // Check pro membership or founder status
         const userMetadata = session.user.user_metadata || {};
         const membershipStatus = userMetadata.membership_status;
         const hasPaidMembership = userMetadata.has_paid_membership;
-        setIsPro(membershipStatus === 'active' || hasPaidMembership === true);
+        const founderStatus = userMetadata.is_founder === true;
+        setIsFounder(founderStatus);
+        setIsPro(membershipStatus === 'active' || hasPaidMembership === true || founderStatus);
         
         // Generate initials from email or name
         const email = session.user.email || '';
@@ -83,11 +88,13 @@ export default function Navigation() {
                          session.user.identities?.[0]?.identity_data?.avatar_url;
         setUserAvatar(avatarUrl || null);
         
-        // Check pro membership
+        // Check pro membership or founder status
         const userMetadata = session.user.user_metadata || {};
         const membershipStatus = userMetadata.membership_status;
         const hasPaidMembership = userMetadata.has_paid_membership;
-        setIsPro(membershipStatus === 'active' || hasPaidMembership === true);
+        const founderStatus = userMetadata.is_founder === true;
+        setIsFounder(founderStatus);
+        setIsPro(membershipStatus === 'active' || hasPaidMembership === true || founderStatus);
         
         const email = session.user.email || '';
         const name = session.user.user_metadata?.full_name || 
@@ -106,6 +113,7 @@ export default function Navigation() {
         setUserAvatar(null);
         setUserInitials('');
         setIsPro(false);
+        setIsFounder(false);
       }
     });
 
@@ -456,37 +464,7 @@ export default function Navigation() {
                       <span>{userInitials || 'U'}</span>
                     )}
                   </Link>
-                  {isPro && (
-                    <div style={{
-                      position: 'absolute',
-                      bottom: '-2px',
-                      right: '-2px',
-                      width: '18px',
-                      height: '18px',
-                      borderRadius: '50%',
-                      backgroundColor: '#ff6622',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px solid white',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      zIndex: 2,
-                      pointerEvents: 'none',
-                    }}>
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                      </svg>
-                    </div>
-                  )}
+                  {isFounder ? <FounderBadge size={18} /> : isPro && <ProBadge size={18} />}
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
                     <div

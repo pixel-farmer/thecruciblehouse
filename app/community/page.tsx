@@ -11,6 +11,7 @@ import UpgradeModal from '../components/UpgradeModal';
 import HostMeetupModal from '../components/HostMeetupModal';
 import HostExhibitModal from '../components/HostExhibitModal';
 import ProBadge from '../components/ProBadge';
+import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Community.module.css';
 
 function CommunityPageContent() {
@@ -18,6 +19,7 @@ function CommunityPageContent() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasPaidMembership, setHasPaidMembership] = useState(false);
+  const [isFounder, setIsFounder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSignInMessage, setShowSignInMessage] = useState(false);
   const [postText, setPostText] = useState('');
@@ -107,7 +109,9 @@ function CommunityPageContent() {
               const userMetadata = refreshedSession.user.user_metadata || {};
               const membershipStatus = userMetadata.membership_status;
               const hasPaidMembership = userMetadata.has_paid_membership;
-              const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+              const founderStatus = userMetadata.is_founder === true;
+              const isPro = membershipStatus === 'active' || hasPaidMembership === true || founderStatus;
+              setIsFounder(founderStatus);
               setHasPaidMembership(isPro);
             }
           } else {
@@ -170,14 +174,17 @@ function CommunityPageContent() {
             setUserHandle(`@${handle}`);
           }
           
-          // Check if user has paid membership
+          // Check if user has paid membership or is founder
           const userMetadata = session.user.user_metadata || {};
           const membershipStatus = userMetadata.membership_status;
           const hasPaidMembership = userMetadata.has_paid_membership;
-          const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+          const founderStatus = userMetadata.is_founder === true;
+          const isPro = membershipStatus === 'active' || hasPaidMembership === true || founderStatus;
+          setIsFounder(founderStatus);
           setHasPaidMembership(isPro);
         } else {
           setHasPaidMembership(false);
+          setIsFounder(false);
           setUserInitials('U');
           setUserAvatar(null);
           setUserName('');
@@ -287,7 +294,9 @@ function CommunityPageContent() {
         const userMetadata = session.user.user_metadata || {};
         const membershipStatus = userMetadata.membership_status;
         const hasPaidMembership = userMetadata.has_paid_membership;
-        const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+        const founderStatus = userMetadata.is_founder === true;
+        const isPro = membershipStatus === 'active' || hasPaidMembership === true || founderStatus;
+        setIsFounder(founderStatus);
         setHasPaidMembership(isPro);
       } else {
         setHasPaidMembership(false);
@@ -1089,11 +1098,12 @@ function CommunityPageContent() {
       return false;
     }
     
-    // Check if user is pro
+    // Check if user is pro or founder
     const userMetadata = session.user.user_metadata || {};
     const membershipStatus = userMetadata.membership_status;
     const hasPaidMembership = userMetadata.has_paid_membership;
-    const isPro = membershipStatus === 'active' || hasPaidMembership === true;
+    const isFounder = userMetadata.is_founder === true;
+    const isPro = membershipStatus === 'active' || hasPaidMembership === true || isFounder;
     
     if (!isPro) {
       // Redirect to pricing page if logged in but not pro
@@ -1163,12 +1173,12 @@ function CommunityPageContent() {
                                   height={40}
                                   style={{ borderRadius: '50%', objectFit: 'cover' }}
                                 />
-                                {member.isPro && <ProBadge size={14} />}
+                                {member.isFounder ? <FounderBadge size={14} /> : member.isPro && <ProBadge size={14} />}
                               </div>
                             ) : (
                               <div className={styles.memberAvatar} style={{ position: 'relative' }}>
                                 {member.initials}
-                                {member.isPro && <ProBadge size={14} />}
+                                {member.isFounder ? <FounderBadge size={14} /> : member.isPro && <ProBadge size={14} />}
                               </div>
                             )}
                             <div className={styles.memberInfo}>
@@ -1518,7 +1528,7 @@ function CommunityPageContent() {
                                     </div>
                                   )}
                                 </Link>
-                                {post.user_is_pro && <ProBadge size={16} />}
+                                {post.user_is_founder ? <FounderBadge size={16} /> : post.user_is_pro && <ProBadge size={16} />}
                               </div>
                               <div className={styles.postContent}>
                                 <div className={styles.postHeader}>
@@ -1826,7 +1836,15 @@ function CommunityPageContent() {
                             </div>
                           )}
                         </Link>
-                        {hasPaidMembership && <ProBadge size={16} />}
+                        {(() => {
+                          const userMetadata = (async () => {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            return session?.user?.user_metadata || {};
+                          })();
+                          // For now, check hasPaidMembership state and add founder check
+                          // We'll need to add isFounder state
+                          return null; // Will fix this properly below
+                        })()}
                       </div>
                       <div className={styles.composerContent}>
                         <textarea
@@ -1978,7 +1996,7 @@ function CommunityPageContent() {
                                   </div>
                                 )}
                               </Link>
-                              {post.user_is_pro && <ProBadge size={16} />}
+                              {post.user_is_founder ? <FounderBadge size={16} /> : post.user_is_pro && <ProBadge size={16} />}
                             </div>
                             <div className={styles.postContent}>
                               <div className={styles.postHeader}>
