@@ -220,11 +220,16 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
         },
         body: JSON.stringify({ otherUserId: artist.id }),
       });
-
+      
       if (response.ok) {
         const data = await response.json();
-        // Redirect to messages page with conversation ID to auto-open it
-        router.push(`/messages?conversation=${data.conversation.id}`);
+        const conversationId = data.conversation?.id;
+        
+        if (conversationId) {
+          const redirectUrl = `/messages?conversation=${conversationId}`;
+          // Use window.location for reliable redirect with query params
+          window.location.href = redirectUrl;
+        }
       } else {
         const errorData = await response.json();
         console.error('Failed to start conversation:', errorData);
@@ -260,63 +265,61 @@ export default function ArtistDetailPage({ params }: { params: Promise<{ slug: s
                   }}>
                     {artist.name}
                   </h1>
-                  {artist.discipline && (
-                    <div style={{ 
-                      fontSize: '0.95rem', 
-                      color: 'var(--text-light)', 
-                      marginBottom: '5px',
-                      fontFamily: 'var(--font-inter)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      <span>{artist.discipline}</span>
-                      {currentUserId && currentUserId !== artist.id && (
-                        <button
-                          onClick={handleStartConversation}
-                          disabled={isStartingConversation}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: isStartingConversation ? 'wait' : 'pointer',
-                            padding: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            opacity: isStartingConversation ? 0.6 : 1,
-                            transition: 'opacity 0.2s ease',
-                            color: 'var(--text-light)',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isStartingConversation) {
-                              e.currentTarget.style.opacity = '0.7';
-                              e.currentTarget.style.color = 'var(--accent-color)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.opacity = isStartingConversation ? '0.6' : '1';
-                            e.currentTarget.style.color = 'var(--text-light)';
-                          }}
-                          aria-label="Start conversation"
-                          title="Send a message"
+                  <div style={{ 
+                    fontSize: '0.95rem', 
+                    color: 'var(--text-light)', 
+                    marginBottom: '5px',
+                    fontFamily: 'var(--font-inter)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    {artist.discipline && <span>{artist.discipline}</span>}
+                    {currentUserId && currentUserId !== artist.id && (
+                      <button
+                        onClick={handleStartConversation}
+                        disabled={isStartingConversation}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: isStartingConversation ? 'wait' : 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: isStartingConversation ? 0.6 : 1,
+                          transition: 'opacity 0.2s ease',
+                          color: 'var(--text-light)',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isStartingConversation) {
+                            e.currentTarget.style.opacity = '0.7';
+                            e.currentTarget.style.color = 'var(--accent-color)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.opacity = isStartingConversation ? '0.6' : '1';
+                          e.currentTarget.style.color = 'var(--text-light)';
+                        }}
+                        aria-label="Start conversation"
+                        title="Send a message"
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
                         >
-                          <svg
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                            <polyline points="22,6 12,13 2,6" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  )}
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                          <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                   <div style={{ 
                     fontSize: '0.95rem', 
                     color: 'var(--text-light)', 

@@ -52,8 +52,26 @@ function MessagesPageContent() {
   const [sending, setSending] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const retryCountRef = useRef(0);
+  const hasInitializedSelectionRef = useRef(false);
+  
+  // Helper to get conversation ID from URL (fallback if searchParams not ready)
+  const getConversationIdFromUrl = () => {
+    // Try searchParams first
+    const fromSearchParams = searchParams.get('conversation');
+    if (fromSearchParams) {
+      return fromSearchParams;
+    }
+    
+    // Fallback: read directly from window.location
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('conversation');
+    }
+    
+    return null;
+  };
 
   useEffect(() => {
     checkAuth();
@@ -65,11 +83,62 @@ function MessagesPageContent() {
     }
   }, [userId]);
 
+  // Watch for conversation ID in URL and select it when conversations are loaded
+  useEffect(() => {
+    const conversationId = getConversationIdFromUrl();
+    
+    if (conversationId && conversations.length > 0) {
+      const conversationToSelect = conversations.find(
+        (conv: Conversation) => conv.id === conversationId
+      );
+      
+      if (conversationToSelect && selectedConversation?.id !== conversationId) {
+        setSelectedConversation(conversationToSelect);
+        // Clear URL after selection
+        setTimeout(() => {
+          router.replace('/messages');
+        }, 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversations, searchParams]);
+
+
+  const refreshConversations = async (preserveSelectionId?: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch('/api/conversations', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversations(data.conversations || []);
+        
+        // Only clear selection if the conversation disappeared
+        if (preserveSelectionId) {
+          const stillExists = data.conversations?.some(
+            (conv: Conversation) => conv.id === preserveSelectionId
+          );
+          if (!stillExists) {
+            setSelectedConversation(null);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing conversations:', error);
+    }
+  };
+
   useEffect(() => {
     if (selectedConversation) {
       fetchMessages(selectedConversation.id);
-      // Refresh conversations to update unread counts
-      fetchConversations();
+      // Refresh conversations to update unread counts, but preserve selection
+      refreshConversations(selectedConversation.id);
     }
   }, [selectedConversation]);
 
@@ -170,30 +239,59 @@ function MessagesPageContent() {
 
       if (response.ok) {
         const data = await response.json();
-        setConversations(data.conversations || []);
+        const conversationsList = data.conversations || [];
+        setConversations(conversationsList);
         
-        // Check if we have a conversation ID in the URL to auto-select
-        const conversationId = searchParams.get('conversation');
-        if (conversationId && !hasAutoSelected && data.conversations) {
-          const conversationToSelect = data.conversations.find(
+        // Select conversation from URL (ONLY place selection happens)
+        const conversationId = getConversationIdFromUrl();
+        
+        // If there's a conversation ID in URL, we need to select it
+        if (conversationId) {
+          const conversationToSelect = conversationsList.find(
             (conv: Conversation) => conv.id === conversationId
           );
-          if (conversationToSelect) {
+          
+          // If URL has conversation ID and it's different from selected, or nothing is selected
+          if (conversationToSelect && selectedConversation?.id !== conversationId) {
             setSelectedConversation(conversationToSelect);
-            setHasAutoSelected(true);
-            // Remove the query parameter from URL
-            router.replace('/messages');
+            hasInitializedSelectionRef.current = true;
+            // Clear URL after a delay to ensure selection is set
+            setTimeout(() => {
+              router.replace('/messages');
+            }, 200);
+          } else if (!conversationToSelect && !selectedConversation && retryCountRef.current < 3) {
+            // Conversation ID in URL but not found - might be a new conversation
+            // Retry if user hasn't manually selected a conversation
+            retryCountRef.current += 1;
+            setTimeout(() => {
+              fetchConversations();
+            }, retryCountRef.current * 300);
+            setLoading(false);
             return;
+          } else if (!conversationToSelect && retryCountRef.current >= 3) {
+            // After retries, give up
+            console.warn('Conversation not found after retries:', conversationId);
+            retryCountRef.current = 0;
+            hasInitializedSelectionRef.current = true;
+            // Only clear URL if we're not still waiting for the conversation
+            setTimeout(() => {
+              router.replace('/messages');
+            }, 200);
+          } else if (conversationToSelect && selectedConversation?.id === conversationId) {
+            // Already selected correctly, just mark as initialized
+            hasInitializedSelectionRef.current = true;
+            // Clear URL after a delay
+            setTimeout(() => {
+              router.replace('/messages');
+            }, 200);
           }
-        }
-        
-        // If no conversation selected and we have conversations, select the first one
-        if (!selectedConversation && data.conversations && data.conversations.length > 0) {
-          setSelectedConversation(data.conversations[0]);
+        } else if (!hasInitializedSelectionRef.current) {
+          // No conversation ID in URL and not initialized - mark as initialized
+          hasInitializedSelectionRef.current = true;
         }
       }
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      console.error('[Messages] Error fetching conversations:', error);
     } finally {
       setLoading(false);
     }
@@ -380,7 +478,7 @@ function MessagesPageContent() {
                             {conv.otherUser.name.charAt(0).toUpperCase()}
                           </div>
                         )}
-                        {conv.otherUser.isPro && <ProBadge size={16} />}
+                        {conv.otherUser.isFounder ? <FounderBadge size={16} /> : conv.otherUser.isPro && <ProBadge size={16} />}
                         {conv.unreadCount > 0 && (
                           <span className={styles.unreadBadge}>{conv.unreadCount}</span>
                         )}
