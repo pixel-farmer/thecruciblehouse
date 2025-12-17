@@ -164,7 +164,24 @@ function MessagesPageContent() {
             const messageExists = prev.some((msg) => msg.id === newMessage.id);
             if (messageExists) return prev;
             
-            // Add the new message (will replace optimistic update if it exists)
+            // Check if this is a message from the current user that matches an optimistic update
+            // If so, replace the optimistic message instead of adding a duplicate
+            if (newMessage.sender_id === userId) {
+              const optimisticIndex = prev.findIndex(
+                (msg) => msg.id.startsWith('temp-') && 
+                         msg.content === newMessage.content &&
+                         msg.sender_id === newMessage.sender_id
+              );
+              
+              if (optimisticIndex !== -1) {
+                // Replace optimistic message with real one
+                const updated = [...prev];
+                updated[optimisticIndex] = newMessage;
+                return updated;
+              }
+            }
+            
+            // Add the new message
             return [...prev, newMessage];
           });
           

@@ -16,6 +16,38 @@ import ProBadge from '../components/ProBadge';
 import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Community.module.css';
 
+// Helper function to convert URLs in text to clickable links
+const linkifyText = (text: string) => {
+  // URL regex pattern - matches http://, https://, and www.
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+  const parts = text.split(urlRegex);
+  
+  return parts.map((part, index) => {
+    // Check if part matches URL pattern
+    const isUrl = /^(https?:\/\/|www\.)/i.test(part);
+    if (isUrl) {
+      // Ensure URL has protocol
+      const url = part.startsWith('http') ? part : `https://${part}`;
+      return (
+        <a
+          key={index}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#ff6622',
+            textDecoration: 'underline',
+            wordBreak: 'break-all',
+          }}
+        >
+          {part}
+        </a>
+      );
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
+
 function CommunityPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -1852,7 +1884,7 @@ function CommunityPageContent() {
                                 ) : (
                                   <>
                                     {post.content && (
-                                      <p className={styles.postText}>{post.content}</p>
+                                      <p className={styles.postText}>{linkifyText(post.content)}</p>
                                     )}
                                     {post.image_url && (
                                       <div style={{
@@ -2320,7 +2352,7 @@ function CommunityPageContent() {
                               ) : (
                                 <>
                                   {post.content && (
-                                    <p className={styles.postText}>{post.content}</p>
+                                    <p className={styles.postText}>{linkifyText(post.content)}</p>
                                   )}
                                   {post.image_url && (
                                     <div style={{
