@@ -34,8 +34,22 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get unique user IDs with their most recent post time
+    // Get most recent messages to find active users
+    const { data: messagesData, error: messagesError } = await supabase
+      .from('messages')
+      .select('sender_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100); // Get more messages to find unique users
+
+    if (messagesError) {
+      console.error('[members/recent GET] Error fetching messages:', messagesError);
+      // Don't fail if messages can't be fetched, just continue with posts
+    }
+
+    // Get unique user IDs with their most recent activity time (posts or messages)
     const userActivityMap = new Map<string, Date>();
+    
+    // Add post activity
     if (postsData) {
       postsData.forEach((post: any) => {
         const userId = post.user_id;
@@ -44,6 +58,19 @@ export async function GET(request: NextRequest) {
         
         if (!existingTime || postTime > existingTime) {
           userActivityMap.set(userId, postTime);
+        }
+      });
+    }
+    
+    // Add message activity (messages take precedence as they're more recent activity)
+    if (messagesData) {
+      messagesData.forEach((message: any) => {
+        const userId = message.sender_id;
+        const messageTime = new Date(message.created_at);
+        const existingTime = userActivityMap.get(userId);
+        
+        if (!existingTime || messageTime > existingTime) {
+          userActivityMap.set(userId, messageTime);
         }
       });
     }
@@ -85,10 +112,11 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // Use most recent activity: post activity > last sign in > created
+        // Use most recent activity: post/message activity > last sign in > created
         // Always ensure we have at least created_at (should always exist)
         let activityTime: Date = created || new Date(); // Fallback to now if created_at is missing
         
+        // postActivity now includes both posts and messages (whichever is more recent)
         if (postActivity) {
           activityTime = postActivity;
         } else if (lastSignIn) {
