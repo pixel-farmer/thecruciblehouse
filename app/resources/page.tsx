@@ -109,8 +109,10 @@ export default function ResourcesPage() {
         
         if (response.ok) {
           if (data.trending && Array.isArray(data.trending)) {
-            // Extract just the names from the trending array
-            const mediumNames = data.trending.map((item: { name: string; count: number }) => item.name);
+            // Extract just the names from the trending array and limit to top 5
+            const mediumNames = data.trending
+              .slice(0, 5)
+              .map((item: { name: string; count: number }) => item.name);
             setTrendingMediums(mediumNames);
             console.log('[Resources] Set trending mediums:', mediumNames);
           } else {

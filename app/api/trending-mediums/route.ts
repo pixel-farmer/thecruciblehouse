@@ -52,7 +52,8 @@ export async function GET() {
 
     const sorted = Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => (b.count as number) - (a.count as number));
+      .sort((a, b) => (b.count as number) - (a.count as number))
+      .slice(0, 5); // Limit to top 5
 
     return NextResponse.json({ trending: sorted });
   } catch (err: any) {
