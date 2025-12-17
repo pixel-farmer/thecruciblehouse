@@ -254,6 +254,7 @@ export default function Navigation() {
     { href: '/community', label: 'COMMUNITY' },
     { href: '/resources', label: 'RESOURCES' },
     { href: '/pricing', label: 'PRICING' },
+    { href: '/guidelines', label: 'GUIDELINES' },
 /*     { href: '/shop', label: 'Shop' },
  */  ];
 
@@ -272,8 +273,9 @@ export default function Navigation() {
             />
           </Link>
         </div>
-        <ul className={`${styles.navMenu} ${isMenuOpen ? styles.active : ''}`}>
-          {navLinks.map((link) => {
+        <div className={styles.navMenuWrapper}>
+          <ul className={`${styles.navMenu} ${isMenuOpen ? styles.active : ''}`}>
+            {navLinks.map((link) => {
             if (link.href === '/commissions') {
               return (
                 <li key={link.href} ref={commissionsDropdownRef} className={styles.dropdownContainer}>
@@ -843,6 +845,7 @@ export default function Navigation() {
           )}
           </li>
         </ul>
+        </div>
         <div
           className={styles.hamburger}
           onClick={() => setIsMenuOpen(!isMenuOpen)}

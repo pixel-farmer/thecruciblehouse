@@ -13,9 +13,11 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 0.3rem 20px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
+  gap: 2rem;
+  position: relative;
 }
 
 .logoImg {
