@@ -356,6 +356,15 @@ export default function ResourcesPage() {
                       <h5 className={styles.readingTitle}>The Boy, the Mole, the Fox and the Horse</h5>
                       <p className={styles.readingAuthor}>by Charlie Mackesy</p>
                     </Link>
+                    <Link 
+                      href="https://amzn.to/44vC1Qr" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={styles.readingItem}
+                    >
+                      <h5 className={styles.readingTitle}>Artists' Master Series: Color and Light</h5>
+                      <p className={styles.readingAuthor}>by Pickard, Knoff, Guweiz, Fowkes</p>
+                    </Link>
                   </div>
                 </div>
               </ScrollAnimation>
