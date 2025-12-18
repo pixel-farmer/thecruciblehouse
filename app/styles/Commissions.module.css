@@ -115,6 +115,34 @@
   border-color: var(--accent-color);
 }
 
+.postJobButtonContainer {
+  display: flex;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.postJobButton {
+  padding: 10px 25px;
+  background-color: var(--accent-color);
+  color: var(--white);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-inter);
+  text-decoration: none;
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.postJobButton:hover {
+  background-color: var(--primary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
 .listingsSection {
   background-color: var(--white);
   padding: 30px;
@@ -143,12 +171,21 @@
   background-color: var(--secondary-color);
   border-radius: 8px;
   border-left: 4px solid var(--accent-color);
-  transition: all 0.3s ease;
+  /* Reserve space for shadow to prevent layout shift */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
-.commissionCard:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+
+/* Open call cards - no hover movement, just shadow change */
+.openCallCard {
+  position: relative;
+  z-index: 1;
+}
+
+/* Open call cards only change shadow on hover, no movement */
+.openCallCard:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+  z-index: 2;
 }
 
 .commissionHeader {
@@ -369,6 +406,31 @@
   font-size: 1rem;
 }
 
+.openCallsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px;
+  /* Prevent layout shifts during hover */
+  contain: layout;
+}
+
+/* Prevent default link behaviors in open calls grid */
+.openCallsGrid a {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Prevent any default link hover effects */
+  transition: none;
+}
+
+.openCallsGrid a:focus,
+.openCallsGrid a:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .groupMembers {
   font-size: 0.85rem;
   color: var(--text-light);
@@ -398,12 +460,36 @@
     flex-direction: column;
   }
 
+  .filters {
+    flex-direction: column;
+  }
+
+  .postJobButtonContainer {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .postJobButton {
+    width: 100%;
+    text-align: center;
+  }
+
   .searchInput {
     width: 100%;
   }
 
   .filters {
     flex-direction: column;
+  }
+
+  .postJobButtonContainer {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .postJobButton {
+    width: 100%;
+    text-align: center;
   }
 
   .commissionHeader {
@@ -424,6 +510,11 @@
 
   .applyButton {
     width: 100%;
+  }
+
+  .openCallsGrid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
   }
 }
 

@@ -250,7 +250,7 @@ export default function Navigation() {
 
   const navLinks = [
     { href: '/artist', label: 'Artists' },
-    { href: '/commissions', label: 'COMMISSIONS' },
+    { href: '/commissions', label: 'OPPORTUNITIES' },
     { href: '/community', label: 'COMMUNITY' },
     { href: '/resources', label: 'RESOURCES' },
     { href: '/pricing', label: 'PRICING' },
@@ -318,14 +318,24 @@ export default function Navigation() {
                         }}
                       >
                         <Link
-                          href="/commissions/post-job"
+                          href="/commissions"
                           className={styles.dropdownLink}
                           onClick={() => {
                             setIsCommissionsDropdownOpen(false);
                             setIsMenuOpen(false);
                           }}
                         >
-                          Post a Job
+                          Commissions
+                        </Link>
+                        <Link
+                          href="/open-calls"
+                          className={styles.dropdownLink}
+                          onClick={() => {
+                            setIsCommissionsDropdownOpen(false);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Open Calls
                         </Link>
                       </div>
                     )}

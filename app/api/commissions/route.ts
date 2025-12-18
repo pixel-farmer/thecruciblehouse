@@ -168,10 +168,10 @@ export async function POST(request: NextRequest) {
       contactPhone,
     } = body;
 
-    // Validation
-    if (!title || !description || !category || !type || !budgetMin || !budgetMax || !contactEmail) {
+    // Validation (contactEmail is now optional)
+    if (!title || !description || !category || !type || !budgetMin || !budgetMax) {
       return NextResponse.json(
-        { error: 'Missing required fields', details: { title: !!title, description: !!description, category: !!category, type: !!type, budgetMin: !!budgetMin, budgetMax: !!budgetMax, contactEmail: !!contactEmail } },
+        { error: 'Missing required fields', details: { title: !!title, description: !!description, category: !!category, type: !!type, budgetMin: !!budgetMin, budgetMax: !!budgetMax } },
         { status: 400 }
       );
     }
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
       location: location?.trim() || null,
       is_remote: isRemote || false,
       deadline: deadline || null,
-      contact_email: contactEmail.trim(),
+      contact_email: contactEmail?.trim() || null,
       contact_phone: contactPhone?.trim() || null,
       client_name: userName,
     };

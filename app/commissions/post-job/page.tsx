@@ -323,14 +323,13 @@ export default function PostJobPage() {
 
                   <div className={styles.formRow}>
                     <div className={styles.formGroup}>
-                      <label htmlFor="contactEmail">Contact Email *</label>
+                      <label htmlFor="contactEmail">Contact Email (Optional)</label>
                       <input
                         type="email"
                         id="contactEmail"
                         name="contactEmail"
                         value={formData.contactEmail}
                         onChange={handleChange}
-                        required
                         placeholder="your@email.com"
                         className={styles.input}
                       />

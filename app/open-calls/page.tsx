@@ -11,42 +11,52 @@ import ProBadge from '../components/ProBadge';
 import FounderBadge from '../components/FounderBadge';
 import styles from '../styles/Commissions.module.css';
 
-interface Commission {
+interface OpenCall {
   id: string;
   title: string;
   description: string;
   category: string;
   type: string;
-  budget_min: number;
-  budget_max: number;
-  location: string | null;
+  deadline: string;
+  city: string | null;
+  state: string | null;
+  country: string | null;
   is_remote: boolean;
-  deadline: string | null;
-  contact_email: string | null;
-  contact_phone: string | null;
-  client_name: string;
-  user_id: string;
+  prizes: string | null;
+  application_fee: number;
+  fee_currency: string;
+  view_count: number;
+  contact_email: string;
+  gallery_name: string | null;
+  website: string;
+  header_image: string | null;
+  organizer_name: string;
   created_at: string;
+  owner: {
+    id: string;
+    name: string;
+    avatar: string | null;
+    initials: string;
+    slug: string;
+  };
 }
 
-export default function CommissionsPage() {
+export default function OpenCallsPage() {
   const router = useRouter();
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [locationFilter, setLocationFilter] = useState('');
   const [remoteOnly, setRemoteOnly] = useState(false);
-  const [commissions, setCommissions] = useState<Commission[]>([]);
+  const [openCalls, setOpenCalls] = useState<OpenCall[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasProMembership, setHasProMembership] = useState(false);
   const [recentMembers, setRecentMembers] = useState<any[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [showSignInMessage, setShowSignInMessage] = useState(false);
-  const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
-  const [applicationMessage, setApplicationMessage] = useState('');
-  const [sendingApplication, setSendingApplication] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const categories = [
     'All',
@@ -61,14 +71,18 @@ export default function CommissionsPage() {
     'Other',
   ];
 
-  const commissionTypes = [
+  const callTypes = [
     'All',
-    'Personal',
-    'Commercial',
+    'Exhibition',
+    'Residency',
+    'Competition',
+    'Grant',
+    'Publication',
+    'Other',
   ];
 
   useEffect(() => {
-    fetchCommissions();
+    fetchOpenCalls();
     checkMembershipStatus();
     fetchRecentMembers();
   }, []);
@@ -98,144 +112,113 @@ export default function CommissionsPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        setCurrentUserId(session.user.id);
         const userMetadata = session.user.user_metadata;
         const membershipStatus = userMetadata?.membership_status;
         const hasPaidMembership = userMetadata?.has_paid_membership;
         const isFounder = userMetadata?.is_founder === true;
         setHasProMembership(membershipStatus === 'active' || hasPaidMembership === true || isFounder);
       } else {
+        setCurrentUserId(null);
         setHasProMembership(false);
       }
     } catch (error) {
       console.error('Error checking membership status:', error);
       setHasProMembership(false);
+      setCurrentUserId(null);
     }
   };
 
-  const handleSendMessage = async (commission: Commission) => {
+  const handleApplyClick = async (openCall: OpenCall) => {
     // Check if user is signed in
     const { data: { session } } = await supabase.auth.getSession();
     if (!session || !session.user) {
       setShowSignInMessage(true);
       return;
     }
-
-    // Don't allow messaging yourself
-    if (session.user.id === commission.user_id) {
-      return;
-    }
-
-    // Open the application modal
-    setSelectedCommission(commission);
-    setApplicationMessage('');
-    setShowApplicationModal(true);
-  };
-
-  const handleCloseApplicationModal = () => {
-    if (!sendingApplication) {
-      setShowApplicationModal(false);
-      setSelectedCommission(null);
-      setApplicationMessage('');
-    }
-  };
-
-  const handleSubmitApplication = async (e: React.FormEvent) => {
-    e.preventDefault();
     
-    if (!selectedCommission || !applicationMessage.trim()) {
+    // Open the website in a new tab
+    window.open(openCall.website, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleEditClick = (e: React.MouseEvent, openCall: OpenCall) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/open-calls/edit/${openCall.id}`);
+  };
+
+  const handleDeleteClick = async (e: React.MouseEvent, openCallId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!confirm('Are you sure you want to delete this open call? This action cannot be undone.')) {
       return;
     }
-
-    // Check if user is signed in
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session || !session.user) {
-      setShowSignInMessage(true);
-      handleCloseApplicationModal();
-      return;
-    }
-
-    setSendingApplication(true);
 
     try {
-      // Create or get existing conversation with the post owner
-      const conversationResponse = await fetch('/api/conversations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          otherUserId: selectedCommission.user_id,
-        }),
-      });
-
-      const conversationData = await conversationResponse.json();
-
-      if (!conversationResponse.ok) {
-        throw new Error(conversationData.error || 'Failed to create conversation');
+      setDeletingId(openCallId);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setShowSignInMessage(true);
+        return;
       }
 
-      // Send the application message
-      const messageResponse = await fetch('/api/messages', {
-        method: 'POST',
+      const response = await fetch(`/api/open-calls?id=${openCallId}`, {
+        method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          conversation_id: conversationData.conversation.id,
-          content: applicationMessage.trim(),
-        }),
       });
 
-      const messageData = await messageResponse.json();
+      const data = await response.json();
 
-      if (!messageResponse.ok) {
-        throw new Error(messageData.error || 'Failed to send message');
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete open call');
       }
 
-      // Close modal and navigate to messages page
-      setShowApplicationModal(false);
-      setSelectedCommission(null);
-      setApplicationMessage('');
-      router.push(`/messages?conversation=${conversationData.conversation.id}`);
+      // Remove the deleted open call from the list
+      setOpenCalls(prev => prev.filter(call => call.id !== openCallId));
     } catch (err: any) {
-      console.error('Error sending application:', err);
-      alert(err.message || 'Failed to send application. Please try again.');
+      console.error('Error deleting open call:', err);
+      alert(err.message || 'Failed to delete open call');
     } finally {
-      setSendingApplication(false);
+      setDeletingId(null);
     }
   };
 
-  const fetchCommissions = async () => {
+  const fetchOpenCalls = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/commissions');
+      const response = await fetch('/api/open-calls');
       const data = await response.json();
 
       if (!response.ok) {
         // Provide more helpful error message if table doesn't exist
         if (data.code === 'TABLE_NOT_FOUND') {
-          throw new Error('Database table not found. Please run the SQL migration in Supabase to create the commission_posts table.');
+          throw new Error('Database table not found. Please run the SQL migration in Supabase to create the open_calls table.');
         }
-        throw new Error(data.error || data.details || 'Failed to fetch commissions');
+        throw new Error(data.error || data.details || 'Failed to fetch open calls');
       }
 
-      setCommissions(data.commissions || []);
+      setOpenCalls(data.openCalls || []);
     } catch (err: any) {
-      console.error('Failed to fetch commissions:', err);
-      setError(err.message || 'Failed to load commissions');
+      console.error('Failed to fetch open calls:', err);
+      setError(err.message || 'Failed to load open calls');
     } finally {
       setLoading(false);
     }
   };
 
-  const formatBudget = (min: number, max: number) => {
-    if (max >= 10000) {
-      return `$${min.toLocaleString()}+`;
-    }
-    return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'No deadline';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -260,16 +243,17 @@ export default function CommissionsPage() {
       .replace(/(^-|-$)/g, '') || 'user';
   };
 
-  const filteredCommissions = commissions.filter((commission) => {
-    const matchesKeyword = commission.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-                          commission.description.toLowerCase().includes(searchKeyword.toLowerCase());
+  const filteredOpenCalls = openCalls.filter((openCall) => {
+    const matchesKeyword = openCall.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+                          openCall.description.toLowerCase().includes(searchKeyword.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || 
-                           commission.category.toLowerCase() === selectedCategory.toLowerCase();
+                           openCall.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesType = selectedType === 'all' || 
-                      commission.type.toLowerCase() === selectedType.toLowerCase();
+                      openCall.type.toLowerCase() === selectedType.toLowerCase();
+    const locationString = [openCall.city, openCall.state, openCall.country].filter(Boolean).join(', ');
     const matchesLocation = !locationFilter || 
-                           (commission.location && commission.location.toLowerCase().includes(locationFilter.toLowerCase()));
-    const matchesRemote = !remoteOnly || commission.is_remote;
+                           locationString.toLowerCase().includes(locationFilter.toLowerCase());
+    const matchesRemote = !remoteOnly || openCall.is_remote;
     
     return matchesKeyword && matchesCategory && matchesType && matchesLocation && matchesRemote;
   });
@@ -284,10 +268,10 @@ export default function CommissionsPage() {
         <div className={styles.container}>
           <ScrollAnimation>
             <div className={styles.header}>
-              <h1 className={styles.mainTitle}>Looking for Commission Work?</h1>
+              <h1 className={styles.mainTitle}>Open Calls for Artists</h1>
               <p className={styles.subtitle}>
-                Find commission opportunities and connect with clients seeking custom artwork. 
-                Browse available commissions or submit your own request.
+                Discover exhibition opportunities, residencies, competitions, grants, and publication calls. 
+                Find your next opportunity to showcase your work.
               </p>
             </div>
           </ScrollAnimation>
@@ -317,7 +301,7 @@ export default function CommissionsPage() {
                         checked={remoteOnly}
                         onChange={(e) => setRemoteOnly(e.target.checked)}
                       />
-                      Remote commissions only
+                      Remote opportunities only
                     </label>
                   </div>
 
@@ -344,7 +328,7 @@ export default function CommissionsPage() {
                         onChange={(e) => setSelectedType(e.target.value)}
                         className={styles.filterSelect}
                       >
-                        {commissionTypes.map((type) => (
+                        {callTypes.map((type) => (
                           <option key={type} value={type === 'All' ? 'all' : type}>
                             {type}
                           </option>
@@ -354,10 +338,10 @@ export default function CommissionsPage() {
 
                     <div className={styles.postJobButtonContainer}>
                       <Link
-                        href="/commissions/post-job"
+                        href="/open-calls/post"
                         className={styles.postJobButton}
                       >
-                        Post a Job
+                        Post Open Call
                       </Link>
                     </div>
                   </div>
@@ -366,55 +350,169 @@ export default function CommissionsPage() {
 
               <ScrollAnimation>
                 <div className={styles.listingsSection}>
-                  <h2 className={styles.sectionTitle}>Available Commissions</h2>
+                  <h2 className={styles.sectionTitle}>Available Open Calls</h2>
                   {loading ? (
-                    <p className={styles.noResults}>Loading commissions...</p>
+                    <p className={styles.noResults}>Loading open calls...</p>
                   ) : error ? (
                     <p className={styles.noResults}>{error}</p>
                   ) : (
-                    <div className={styles.commissionList}>
-                      {filteredCommissions.length > 0 ? (
-                        filteredCommissions.map((commission) => (
-                          <div key={commission.id} className={styles.commissionCard}>
-                            <div className={styles.commissionHeader}>
-                              <h3 className={styles.commissionTitle}>{commission.title}</h3>
-                              <span className={styles.commissionPosted}>
-                                {formatTimeAgo(commission.created_at)}
-                              </span>
-                            </div>
-                            <div className={styles.commissionMeta}>
-                              <span className={styles.commissionClient}>
-                                Client: {commission.client_name}
-                              </span>
-                              <span className={styles.commissionCategory}>{commission.category}</span>
-                              <span className={styles.commissionType}>{commission.type}</span>
-                              {commission.is_remote && (
-                                <span className={styles.commissionType} style={{ backgroundColor: '#4CAF50', color: 'white' }}>
-                                  Remote
-                                </span>
+                    <div className={styles.openCallsGrid}>
+                      {filteredOpenCalls.length > 0 ? (
+                        filteredOpenCalls.map((openCall) => (
+                          <Link
+                            key={openCall.id}
+                            href={`/open-calls/${openCall.id}`}
+                            style={{
+                              textDecoration: 'none',
+                              color: 'inherit',
+                              display: 'block',
+                            }}
+                          >
+                            <div 
+                              className={`${styles.commissionCard} ${styles.openCallCard}`}
+                              style={{
+                                cursor: 'pointer',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                /* Prevent text selection on hover */
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                              }}
+                            >
+                              {openCall.header_image ? (
+                                <div style={{ 
+                                  width: '100%', 
+                                  height: '180px', 
+                                  marginBottom: '15px',
+                                  borderRadius: '8px',
+                                  overflow: 'hidden',
+                                  position: 'relative',
+                                  backgroundColor: 'var(--secondary-color)'
+                                }}>
+                                  <Image
+                                    src={openCall.header_image}
+                                    alt={openCall.title}
+                                    fill
+                                    style={{ objectFit: 'cover' }}
+                                  />
+                                </div>
+                              ) : (
+                                <div style={{ 
+                                  width: '100%', 
+                                  height: '180px', 
+                                  marginBottom: '15px',
+                                  borderRadius: '8px',
+                                  backgroundColor: 'var(--secondary-color)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  color: 'var(--text-light)',
+                                  fontFamily: 'var(--font-inter)',
+                                  fontSize: '0.9rem'
+                                }}>
+                                  No Image
+                                </div>
                               )}
+                              
+                              <h3 className={styles.commissionTitle} style={{ 
+                                fontSize: '1.2rem', 
+                                marginBottom: '10px',
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                                lineHeight: '1.4'
+                              }}>
+                                {openCall.title}
+                              </h3>
+
+                              <div style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                gap: '8px',
+                                marginBottom: '15px',
+                                flex: 1
+                              }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ 
+                                    fontSize: '0.85rem', 
+                                    color: 'var(--text-light)',
+                                    fontFamily: 'var(--font-inter)'
+                                  }}>
+                                    📅
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.9rem', 
+                                    color: 'var(--text-dark)',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontWeight: 500
+                                  }}>
+                                    {formatDate(openCall.deadline)}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ 
+                                    fontSize: '0.85rem', 
+                                    color: 'var(--text-light)',
+                                    fontFamily: 'var(--font-inter)'
+                                  }}>
+                                    👁️
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.9rem', 
+                                    color: 'var(--text-dark)',
+                                    fontFamily: 'var(--font-inter)'
+                                  }}>
+                                    {openCall.view_count || 0} Views
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ 
+                                    fontSize: '0.85rem', 
+                                    color: 'var(--text-light)',
+                                    fontFamily: 'var(--font-inter)'
+                                  }}>
+                                    🏛️
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.9rem', 
+                                    color: 'var(--text-dark)',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontWeight: 500
+                                  }}>
+                                    {openCall.gallery_name || openCall.owner.name}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ 
+                                    fontSize: '0.85rem', 
+                                    color: 'var(--text-light)',
+                                    fontFamily: 'var(--font-inter)'
+                                  }}>
+                                    💰
+                                  </span>
+                                  <span style={{ 
+                                    fontSize: '0.9rem', 
+                                    color: openCall.application_fee === 0 ? '#4CAF50' : 'var(--text-dark)',
+                                    fontFamily: 'var(--font-inter)',
+                                    fontWeight: 500
+                                  }}>
+                                    {openCall.application_fee === 0 
+                                      ? 'Free' 
+                                      : `${openCall.fee_currency === 'USD' ? '$' : openCall.fee_currency} ${openCall.application_fee.toLocaleString()}`
+                                    }
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                            <p className={styles.commissionDescription}>{commission.description}</p>
-                            {commission.location && (
-                              <p className={styles.commissionDescription} style={{ fontSize: '0.9rem', color: 'var(--text-light)', marginTop: '-10px' }}>
-                                📍 {commission.location}
-                              </p>
-                            )}
-                            <div className={styles.commissionFooter}>
-                              <span className={styles.commissionBudget}>
-                                Budget: {formatBudget(commission.budget_min, commission.budget_max)}
-                              </span>
-                              <button 
-                                className={styles.applyButton}
-                                onClick={() => handleSendMessage(commission)}
-                              >
-                                Apply
-                              </button>
-                            </div>
-                          </div>
+                          </Link>
                         ))
                       ) : (
-                        <p className={styles.noResults}>No commissions found matching your criteria.</p>
+                        <p className={styles.noResults}>No open calls found matching your criteria.</p>
                       )}
                     </div>
                   )}
@@ -476,18 +574,18 @@ export default function CommissionsPage() {
                       <div className={styles.activityItem}>
                         <p className={styles.activityText}>Loading...</p>
                       </div>
-                    ) : commissions.length === 0 ? (
+                    ) : openCalls.length === 0 ? (
                       <div className={styles.activityItem}>
                         <p className={styles.activityText} style={{ color: 'var(--text-light)' }}>
                           No recent activity
                         </p>
                       </div>
                     ) : (
-                      commissions.slice(0, 5).map((commission) => {
-                        const clientName = commission.client_name || 'Someone';
-                        const slug = createSlug(clientName);
+                      openCalls.slice(0, 5).map((openCall) => {
+                        const organizerName = openCall.organizer_name || 'Someone';
+                        const slug = createSlug(organizerName);
                         return (
-                          <div key={commission.id} className={styles.activityItem}>
+                          <div key={openCall.id} className={styles.activityItem}>
                             <p className={styles.activityText}>
                               <Link 
                                 href={`/artist/${slug}`}
@@ -503,12 +601,12 @@ export default function CommissionsPage() {
                                   e.currentTarget.style.color = 'inherit';
                                 }}
                               >
-                                <strong>{clientName}</strong>
+                                <strong>{organizerName}</strong>
                               </Link>{' '}
-                              posted a new commission request
+                              posted a new open call
                             </p>
                             <span className={styles.activityTime}>
-                              {formatTimeAgo(commission.created_at)}
+                              {formatTimeAgo(openCall.created_at)}
                             </span>
                           </div>
                         );
@@ -521,181 +619,6 @@ export default function CommissionsPage() {
           </div>
         </div>
       </section>
-
-      {/* Application Modal */}
-      {showApplicationModal && selectedCommission && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.7)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: '20px',
-          }}
-          onClick={handleCloseApplicationModal}
-        >
-          <div
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              maxWidth: '600px',
-              width: '100%',
-              maxHeight: '90vh',
-              overflow: 'auto',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: '1.5rem',
-              borderBottom: '1px solid #eee',
-            }}>
-              <h2 style={{ 
-                margin: 0, 
-                fontFamily: 'var(--font-inter)', 
-                fontSize: '1.5rem', 
-                fontWeight: 600, 
-                color: 'var(--text-dark)' 
-              }}>
-                Apply for {selectedCommission.title}
-              </h2>
-              <button
-                onClick={handleCloseApplicationModal}
-                disabled={sendingApplication}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.5rem',
-                  cursor: sendingApplication ? 'not-allowed' : 'pointer',
-                  color: 'var(--text-light)',
-                  padding: '0',
-                  width: '30px',
-                  height: '30px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmitApplication} style={{ padding: '1.5rem' }}>
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label 
-                  htmlFor="applicationMessage"
-                  style={{
-                    display: 'block',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '0.95rem',
-                    fontWeight: 500,
-                    color: 'var(--text-dark)',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  Why would you like to apply for this job?
-                </label>
-                <textarea
-                  id="applicationMessage"
-                  value={applicationMessage}
-                  onChange={(e) => setApplicationMessage(e.target.value)}
-                  placeholder="Tell the client about your interest, relevant experience, and why you're a good fit for this project..."
-                  required
-                  disabled={sendingApplication}
-                  style={{
-                    width: '100%',
-                    minHeight: '150px',
-                    padding: '12px 16px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '0.95rem',
-                    color: 'var(--text-dark)',
-                    resize: 'vertical',
-                    boxSizing: 'border-box',
-                  }}
-                />
-              </div>
-
-              {/* Actions */}
-              <div style={{ 
-                display: 'flex', 
-                gap: '10px', 
-                justifyContent: 'flex-end' 
-              }}>
-                <button
-                  type="button"
-                  onClick={handleCloseApplicationModal}
-                  disabled={sendingApplication}
-                  style={{
-                    padding: '10px 20px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    backgroundColor: 'white',
-                    color: 'var(--text-dark)',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '0.95rem',
-                    fontWeight: 500,
-                    cursor: sendingApplication ? 'not-allowed' : 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!sendingApplication) {
-                      e.currentTarget.style.backgroundColor = '#f5f5f5';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!sendingApplication) {
-                      e.currentTarget.style.backgroundColor = 'white';
-                    }
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={sendingApplication || !applicationMessage.trim()}
-                  style={{
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '8px',
-                    backgroundColor: sendingApplication || !applicationMessage.trim() ? '#ccc' : 'var(--accent-color)',
-                    color: 'white',
-                    fontFamily: 'var(--font-inter)',
-                    fontSize: '0.95rem',
-                    fontWeight: 500,
-                    cursor: sendingApplication || !applicationMessage.trim() ? 'not-allowed' : 'pointer',
-                    transition: 'background-color 0.2s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!sendingApplication && applicationMessage.trim()) {
-                      e.currentTarget.style.backgroundColor = '#e55a1a';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!sendingApplication && applicationMessage.trim()) {
-                      e.currentTarget.style.backgroundColor = 'var(--accent-color)';
-                    }
-                  }}
-                >
-                  {sendingApplication ? 'Sending...' : 'Send'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Sign In Message Modal */}
       {showSignInMessage && (
@@ -797,4 +720,3 @@ export default function CommissionsPage() {
     </motion.div>
   );
 }
-
