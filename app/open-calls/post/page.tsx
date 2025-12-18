@@ -448,7 +448,7 @@ export default function PostOpenCallPage() {
                       value={formData.title}
                       onChange={handleChange}
                       required
-                      placeholder="e.g., BBA Artist Prize 2026"
+                      placeholder="e.g., Exhibit of New Art"
                       className={styles.input}
                     />
                   </div>
@@ -520,7 +520,7 @@ export default function PostOpenCallPage() {
                         name="city"
                         value={formData.city}
                         onChange={handleChange}
-                        placeholder="e.g., Berlin"
+                        placeholder="e.g., Philadelphia"
                         className={styles.input}
                       />
                     </div>
@@ -533,7 +533,7 @@ export default function PostOpenCallPage() {
                         name="state"
                         value={formData.state}
                         onChange={handleChange}
-                        placeholder="e.g., Brandenburg"
+                        placeholder="e.g., Pennsylvania"
                         className={styles.input}
                       />
                     </div>
@@ -546,7 +546,7 @@ export default function PostOpenCallPage() {
                         name="country"
                         value={formData.country}
                         onChange={handleChange}
-                        placeholder="e.g., Germany"
+                        placeholder="e.g., USA"
                         className={styles.input}
                       />
                     </div>
@@ -590,7 +590,7 @@ export default function PostOpenCallPage() {
                       name="prizes"
                       value={formData.prizes}
                       onChange={handleChange}
-                      placeholder="e.g., BBA Prizes, $10,000 Grand Prize"
+                      placeholder="e.g., $10,000 Grand Prize"
                       className={styles.input}
                     />
                   </div>
