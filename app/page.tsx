@@ -33,14 +33,24 @@ export default function Home() {
   const [particles, setParticles] = useState<Array<{left: number; delay: number; duration: number}>>([]);
   
   // Generate particle positions only on client to avoid hydration mismatch
+  // Defer particle initialization until after first paint
   useEffect(() => {
-    setParticles(
-      Array.from({ length: 25 }).map(() => ({
-        left: Math.random() * 100,
-        delay: Math.random() * 20,
-        duration: 20 + Math.random() * 15
-      }))
-    );
+    const initParticles = () => {
+      setParticles(
+        Array.from({ length: 25 }).map(() => ({
+          left: Math.random() * 100,
+          delay: Math.random() * 20,
+          duration: 20 + Math.random() * 15
+        }))
+      );
+    };
+
+    // Use requestIdleCallback if available, otherwise use setTimeout
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      requestIdleCallback(initParticles, { timeout: 100 });
+    } else {
+      setTimeout(initParticles, 100);
+    }
   }, []);
 
   useEffect(() => {
@@ -131,7 +141,7 @@ export default function Home() {
 
       <section className={styles.recentArtists}>
         <div className={styles.container}>
-          <ScrollAnimation>
+          <ScrollAnimation delay={0.2}>
             <h2 className={styles.sectionTitle}>Recently Joined Artists</h2>
           </ScrollAnimation>
           {loadingArtists ? (
@@ -139,10 +149,10 @@ export default function Home() {
               <div className={styles.loadingText}>Loading artists...</div>
             </div>
           ) : recentArtists.length > 0 ? (
-            <div className={styles.artistsGrid}>
-              {recentArtists.map((artist, index) => (
-                <ScrollAnimation key={artist.id} delay={index * 0.1}>
-                  <Link href={`/artist/${artist.slug}`} className={styles.artistAvatarLink}>
+            <ScrollAnimation delay={0.25}>
+              <div className={styles.artistsGrid}>
+                {recentArtists.map((artist) => (
+                  <Link key={artist.id} href={`/artist/${artist.slug}`} className={styles.artistAvatarLink}>
                     <div className={styles.artistAvatarContainer}>
                       {artist.avatar_url ? (
                         <div className={styles.artistAvatarImage}>
@@ -167,9 +177,9 @@ export default function Home() {
                       </div>
                     </div>
                   </Link>
-                </ScrollAnimation>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollAnimation>
           ) : (
             <div className={styles.artistsGrid}>
               <div className={styles.noArtistsText}>No artists yet</div>
@@ -180,7 +190,7 @@ export default function Home() {
 
       <section className={styles.featured}>
         <div className={styles.container}>
-          <ScrollAnimation>
+          <ScrollAnimation delay={0.2}>
             <h2 className={styles.sectionTitle}>Featured Works</h2>
           </ScrollAnimation>
           {loadingFeatured ? (
@@ -188,10 +198,10 @@ export default function Home() {
               <div className={styles.loadingText}>Loading featured artwork...</div>
             </div>
           ) : featuredArtwork.length > 0 ? (
-            <div className={styles.featuredGrid}>
-              {featuredArtwork.map((artwork, index) => (
-                <ScrollAnimation key={artwork.id} delay={index * 0.1}>
-                  <div className={styles.featuredItem}>
+            <ScrollAnimation delay={0.25}>
+              <div className={styles.featuredGrid}>
+                {featuredArtwork.map((artwork) => (
+                  <div key={artwork.id} className={styles.featuredItem}>
                     {artwork.image_url ? (
                       <div className={styles.featuredImageContainer}>
                         <Image
@@ -211,9 +221,9 @@ export default function Home() {
                       <h3>{artwork.artistName}</h3>
                     </div>
                   </div>
-                </ScrollAnimation>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollAnimation>
           ) : (
             <div className={styles.featuredGrid}>
               <div className={styles.noArtworkText}>No featured artwork yet</div>
