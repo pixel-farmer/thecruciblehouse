@@ -28,6 +28,7 @@ export default function EditArticlePage({ params }: { params: Promise<{ id: stri
     'Business',
     'Tutorials',
     'Photography',
+    'Digital',
   ];
 
   // Check access and load article

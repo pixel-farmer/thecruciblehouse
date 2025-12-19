@@ -225,3 +225,98 @@ export async function PATCH(
   }
 }
 
+// DELETE: Delete an article
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    let supabase;
+    try {
+      supabase = await createAuthenticatedSupabaseClient(request);
+    } catch (clientError: any) {
+      console.error('[articles/[id] DELETE] Error creating Supabase client:', clientError);
+      return NextResponse.json(
+        { error: 'Failed to initialize database connection', details: clientError.message },
+        { status: 500 }
+      );
+    }
+
+    // Get current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error('[articles/[id] DELETE] Auth error:', userError);
+      return NextResponse.json(
+        { error: 'Authentication required. Please log in to delete an article.', details: userError?.message },
+        { status: 401 }
+      );
+    }
+
+    // Fetch the article to check ownership
+    const { data: existingArticle, error: fetchError } = await supabase
+      .from('articles')
+      .select('user_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !existingArticle) {
+      return NextResponse.json(
+        { error: 'Article not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if user owns the article
+    if (existingArticle.user_id !== user.id) {
+      return NextResponse.json(
+        { error: 'You do not have permission to delete this article.' },
+        { status: 403 }
+      );
+    }
+
+    // Delete the article
+    const { data, error } = await supabase
+      .from('articles')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select();
+
+    if (error) {
+      console.error('[articles/[id] DELETE] Supabase error:', error);
+      
+      if (error.code === '42501' || error.message.includes('permission denied')) {
+        return NextResponse.json(
+          { error: 'You do not have permission to delete this article.' },
+          { status: 403 }
+        );
+      }
+      
+      return NextResponse.json(
+        { error: 'Failed to delete article', details: error.message, code: error.code },
+        { status: 500 }
+      );
+    }
+
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: 'Article not found or you do not have permission to delete it' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, deletedCount: data.length });
+  } catch (error) {
+    console.error('[articles/[id] DELETE] Exception:', error);
+    return NextResponse.json(
+      { 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -385,14 +385,24 @@ export default function Navigation() {
                         }}
                       >
                         <Link
-                          href="/resources/write-article"
+                          href="/resources"
                           className={styles.dropdownLink}
                           onClick={() => {
                             setIsResourcesDropdownOpen(false);
                             setIsMenuOpen(false);
                           }}
                         >
-                          Post Article
+                          Articles
+                        </Link>
+                        <Link
+                          href="/tutorials"
+                          className={styles.dropdownLink}
+                          onClick={() => {
+                            setIsResourcesDropdownOpen(false);
+                            setIsMenuOpen(false);
+                          }}
+                        >
+                          Tutorials
                         </Link>
                       </div>
                     )}

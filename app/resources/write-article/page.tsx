@@ -58,6 +58,7 @@ export default function WriteArticlePage() {
     'Business',
     'Tutorials',
     'Photography',
+    'Digital',
   ];
 
   const handleChange = (

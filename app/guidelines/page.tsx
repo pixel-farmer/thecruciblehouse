@@ -116,7 +116,7 @@ export default function GuidelinesPage() {
                     color: 'var(--text-light)',
                     margin: 0
                   }}>
-                    Upload only artwork you created or have clear permission to share. No plagiarism, tracing without credit, or AI-generated art passed off as fully human-made without disclosure.
+                    Upload only artwork you created or have clear permission to share. No plagiarism, tracing without credit, or AI-generated art passed off as fully human-made.
                   </p>
                 </li>
                 <li style={{

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import ScrollAnimation from '../components/ScrollAnimation';
 import styles from '../styles/Resources.module.css';
 
-interface Article {
+interface Tutorial {
   id: string;
   title: string;
   excerpt: string;
@@ -20,16 +20,17 @@ interface Article {
   content?: string;
 }
 
-export default function ResourcesPage() {
+export default function TutorialsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [trendingMediums, setTrendingMediums] = useState<string[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [articlesLoading, setArticlesLoading] = useState(true);
+  const [tutorials, setTutorials] = useState<Tutorial[]>([]);
+  const [tutorialsLoading, setTutorialsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
-  const [articleLoading, setArticleLoading] = useState(false);
+  const [selectedTutorial, setSelectedTutorial] = useState<Tutorial | null>(null);
+  const [tutorialLoading, setTutorialLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const getCurrentUser = async () => {
@@ -40,41 +41,45 @@ export default function ResourcesPage() {
   }, []);
 
   useEffect(() => {
-    const fetchArticles = async () => {
+    const fetchTutorials = async () => {
       try {
-        setArticlesLoading(true);
+        setTutorialsLoading(true);
+        // For now, fetch from articles API filtered by category 'Tutorials'
+        // Later, you can create a dedicated /api/tutorials endpoint
         const response = await fetch('/api/articles');
         
         if (response.ok) {
           const data = await response.json();
-          const fetchedArticles = (data.articles || []).map((article: any) => ({
-            id: article.id,
-            title: article.title,
-            excerpt: article.excerpt,
-            category: article.category,
-            date: new Date(article.created_at).toLocaleDateString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
-            }),
-            author: article.author,
-            readTime: article.read_time || '5 min read',
-            user_id: article.user_id,
-          }));
-          setArticles(fetchedArticles);
+          const fetchedTutorials = (data.articles || [])
+            .filter((article: any) => article.category === 'Tutorials')
+            .map((tutorial: any) => ({
+              id: tutorial.id,
+              title: tutorial.title,
+              excerpt: tutorial.excerpt,
+              category: tutorial.category,
+              date: new Date(tutorial.created_at).toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              }),
+              author: tutorial.author,
+              readTime: tutorial.read_time || '5 min read',
+              user_id: tutorial.user_id,
+            }));
+          setTutorials(fetchedTutorials);
         } else {
-          console.error('[Resources] Failed to fetch articles:', response.status);
-          setArticles([]);
+          console.error('[Tutorials] Failed to fetch tutorials:', response.status);
+          setTutorials([]);
         }
       } catch (error) {
-        console.error('[Resources] Error fetching articles:', error);
-        setArticles([]);
+        console.error('[Tutorials] Error fetching tutorials:', error);
+        setTutorials([]);
       } finally {
-        setArticlesLoading(false);
+        setTutorialsLoading(false);
       }
     };
 
-    fetchArticles();
+    fetchTutorials();
   }, []);
 
   useEffect(() => {
@@ -83,48 +88,34 @@ export default function ResourcesPage() {
         setTrendingLoading(true);
         const response = await fetch('/api/trending-mediums');
         
-        console.log('[Resources] Response status:', response.status);
-        console.log('[Resources] Response headers:', Object.fromEntries(response.headers.entries()));
-        
-        // Clone the response so we can read it multiple times if needed
-        const responseClone = response.clone();
         const text = await response.text();
-        console.log('[Resources] Raw response text:', text);
-        console.log('[Resources] Response text length:', text.length);
-        
         let data;
         try {
           if (text.trim() === '') {
-            console.warn('[Resources] Empty response body');
             data = { error: 'Empty response', message: 'The server returned an empty response' };
           } else {
             data = JSON.parse(text);
-            console.log('[Resources] Parsed JSON data:', data);
           }
         } catch (parseError) {
-          console.error('[Resources] Failed to parse JSON:', parseError);
-          console.error('[Resources] Raw text that failed to parse:', text);
-          data = { error: 'Invalid JSON response', message: 'Failed to parse server response', raw: text.substring(0, 500) };
+          console.error('[Tutorials] Failed to parse JSON:', parseError);
+          data = { error: 'Invalid JSON response', message: 'Failed to parse server response' };
         }
         
         if (response.ok) {
           if (data.trending && Array.isArray(data.trending)) {
-            // Extract just the names from the trending array and limit to top 5
             const mediumNames = data.trending
               .slice(0, 5)
               .map((item: { name: string; count: number }) => item.name);
             setTrendingMediums(mediumNames);
-            console.log('[Resources] Set trending mediums:', mediumNames);
           } else {
-            console.warn('[Resources] No trending mediums in response:', data);
             setTrendingMediums([]);
           }
         } else {
-          console.error('[Resources] Failed to fetch trending mediums. Status:', response.status, 'Error:', data);
+          console.error('[Tutorials] Failed to fetch trending mediums. Status:', response.status);
           setTrendingMediums([]);
         }
       } catch (error) {
-        console.error('[Resources] Error fetching trending mediums:', error);
+        console.error('[Tutorials] Error fetching trending mediums:', error);
         setTrendingMediums([]);
       } finally {
         setTrendingLoading(false);
@@ -134,49 +125,110 @@ export default function ResourcesPage() {
     fetchTrendingMediums();
   }, []);
 
-  const filteredArticles = articles.filter((article) =>
-    article.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    article.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    article.category.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTutorials = tutorials.filter((tutorial) =>
+    tutorial.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tutorial.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tutorial.category.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleReadMore = async (articleId: string) => {
-    setArticleLoading(true);
+  const handleReadMore = async (tutorialId: string) => {
+    setTutorialLoading(true);
     try {
-      const response = await fetch(`/api/articles/${articleId}`);
+      const response = await fetch(`/api/articles/${tutorialId}`);
       if (response.ok) {
         const data = await response.json();
-        const article = data.article;
-        setSelectedArticle({
-          id: article.id,
-          title: article.title,
-          excerpt: article.excerpt,
-          category: article.category,
-          date: new Date(article.created_at).toLocaleDateString('en-US', { 
+        const tutorial = data.article;
+        setSelectedTutorial({
+          id: tutorial.id,
+          title: tutorial.title,
+          excerpt: tutorial.excerpt,
+          category: tutorial.category,
+          date: new Date(tutorial.created_at).toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'long', 
             day: 'numeric' 
           }),
-          author: article.author,
-          readTime: article.read_time || '5 min read',
-          user_id: article.user_id,
-          content: article.content,
+          author: tutorial.author,
+          readTime: tutorial.read_time || '5 min read',
+          user_id: tutorial.user_id,
+          content: tutorial.content,
         });
-        // Scroll to top
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        console.error('Failed to fetch article:', response.status);
+        console.error('Failed to fetch tutorial:', response.status);
       }
     } catch (error) {
-      console.error('Error fetching article:', error);
+      console.error('Error fetching tutorial:', error);
     } finally {
-      setArticleLoading(false);
+      setTutorialLoading(false);
     }
   };
 
   const handleBackToList = () => {
-    setSelectedArticle(null);
+    setSelectedTutorial(null);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteTutorial = async () => {
+    if (!selectedTutorial) return;
+    
+    if (!confirm('Are you sure you want to delete this tutorial? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        alert('You must be logged in to delete a tutorial.');
+        return;
+      }
+
+      const response = await fetch(`/api/articles/${selectedTutorial.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete tutorial');
+      }
+
+      // Return to tutorials list
+      setSelectedTutorial(null);
+      // Refresh the tutorials list
+      const tutorialsResponse = await fetch('/api/articles');
+      if (tutorialsResponse.ok) {
+        const tutorialsData = await tutorialsResponse.json();
+        const fetchedTutorials = (tutorialsData.articles || [])
+          .filter((article: any) => article.category === 'Tutorials')
+          .map((tutorial: any) => ({
+            id: tutorial.id,
+            title: tutorial.title,
+            excerpt: tutorial.excerpt,
+            category: tutorial.category,
+            date: new Date(tutorial.created_at).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }),
+            author: tutorial.author,
+            readTime: tutorial.read_time || '5 min read',
+            user_id: tutorial.user_id,
+          }));
+        setTutorials(fetchedTutorials);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err: any) {
+      console.error('Error deleting tutorial:', err);
+      alert(err.message || 'Failed to delete tutorial');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -189,15 +241,15 @@ export default function ResourcesPage() {
         <div className={styles.container}>
           <ScrollAnimation>
             <div className={styles.header}>
-              <h1 className={styles.mainTitle}>Latest Articles & News for Artists</h1>
+              <h1 className={styles.mainTitle}>Tutorials for Artists</h1>
               <p className={styles.subtitle}>
-                Stay updated and embrace your artistic journey with the latest articles, 
-                news, and insights from the art community.
+                Learn new techniques, improve your skills, and expand your artistic knowledge 
+                with step-by-step tutorials from experienced artists in the community.
               </p>
             </div>
           </ScrollAnimation>
 
-          {!selectedArticle && (
+          {!selectedTutorial && (
             <div className={styles.searchSection}>
               <input
                 type="text"
@@ -211,39 +263,77 @@ export default function ResourcesPage() {
 
           <div className={styles.contentLayout}>
             <div className={styles.mainContent}>
-              {selectedArticle ? (
+              {selectedTutorial ? (
                 <ScrollAnimation>
                   <div className={styles.articleDetail}>
                     <button 
                       onClick={handleBackToList}
                       className={styles.backButton}
                     >
-                      ← Back to Articles
+                      ← Back to Tutorials
                     </button>
                     
-                    {articleLoading ? (
-                      <p className={styles.loadingText}>Loading article...</p>
+                    {tutorialLoading ? (
+                      <p className={styles.loadingText}>Loading tutorial...</p>
                     ) : (
                       <>
                         <div className={styles.articleDetailHeader}>
-                          <span className={styles.articleCategory}>{selectedArticle.category}</span>
-                          <span className={styles.articleDate}>{selectedArticle.date}</span>
+                          <span className={styles.articleCategory}>{selectedTutorial.category}</span>
+                          <span className={styles.articleDate}>{selectedTutorial.date}</span>
                         </div>
-                        <h1 className={styles.articleDetailTitle}>{selectedArticle.title}</h1>
+                        <h1 className={styles.articleDetailTitle}>{selectedTutorial.title}</h1>
                         <div className={styles.articleDetailMeta}>
-                          <span className={styles.articleAuthor}>By {selectedArticle.author}</span>
-                          <span className={styles.articleReadTime}>{selectedArticle.readTime}</span>
-                          {currentUserId === selectedArticle.user_id && (
-                            <Link 
-                              href={`/resources/edit-article/${selectedArticle.id}`}
-                              className={styles.editButton}
-                            >
-                              Edit Article
-                            </Link>
+                          <span className={styles.articleAuthor}>By {selectedTutorial.author}</span>
+                          <span className={styles.articleReadTime}>{selectedTutorial.readTime}</span>
+                          {currentUserId === selectedTutorial.user_id && (
+                            <>
+                              <Link 
+                                href={`/resources/edit-article/${selectedTutorial.id}`}
+                                className={styles.editButton}
+                              >
+                                Edit Tutorial
+                              </Link>
+                              <button
+                                onClick={handleDeleteTutorial}
+                                disabled={deleting}
+                                style={{
+                                  padding: '10px 25px',
+                                  backgroundColor: '#dc3545',
+                                  color: 'var(--white)',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: deleting ? 'not-allowed' : 'pointer',
+                                  fontSize: '0.95rem',
+                                  fontWeight: 500,
+                                  fontFamily: 'var(--font-inter)',
+                                  transition: 'all 0.3s ease',
+                                  opacity: deleting ? 0.6 : 1,
+                                  whiteSpace: 'nowrap',
+                                  lineHeight: '1.5',
+                                  boxSizing: 'border-box',
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (!deleting) {
+                                    e.currentTarget.style.backgroundColor = '#c82333';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (!deleting) {
+                                    e.currentTarget.style.backgroundColor = '#dc3545';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  }
+                                }}
+                              >
+                                {deleting ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </>
                           )}
                         </div>
                         <div className={styles.articleDetailContent}>
-                          {selectedArticle.content?.split('\n').map((line, index) => {
+                          {selectedTutorial.content?.split('\n').map((line, index) => {
                             // Check if line is a markdown image: ![alt](url)
                             const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                             if (imageMatch) {
@@ -252,7 +342,7 @@ export default function ResourcesPage() {
                                 <div key={index} style={{ margin: '20px 0', textAlign: 'center' }}>
                                   <img
                                     src={url}
-                                    alt={alt || 'Article image'}
+                                    alt={alt || 'Tutorial image'}
                                     style={{
                                       maxWidth: '100%',
                                       height: 'auto',
@@ -277,9 +367,9 @@ export default function ResourcesPage() {
                 <ScrollAnimation>
                   <div className={styles.articlesSection}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                      <h2 className={styles.sectionTitle}>Latest Articles</h2>
+                      <h2 className={styles.sectionTitle}>Latest Tutorials</h2>
                       <Link 
-                        href="/resources/write-article"
+                        href="/tutorials/write-tutorial"
                         style={{
                           padding: '10px 20px',
                           backgroundColor: 'var(--accent-color)',
@@ -299,30 +389,30 @@ export default function ResourcesPage() {
                           e.currentTarget.style.backgroundColor = 'var(--accent-color)';
                         }}
                       >
-                        Post Article
+                        Post Tutorial
                       </Link>
                     </div>
                     <div className={styles.articlesList}>
-                      {articlesLoading ? (
-                        <p className={styles.loadingText}>Loading articles...</p>
-                      ) : filteredArticles.length > 0 ? (
-                        filteredArticles.map((article) => (
-                          <article key={article.id} className={styles.articleCard}>
+                      {tutorialsLoading ? (
+                        <p className={styles.loadingText}>Loading tutorials...</p>
+                      ) : filteredTutorials.length > 0 ? (
+                        filteredTutorials.map((tutorial) => (
+                          <article key={tutorial.id} className={styles.articleCard}>
                             <div className={styles.articleHeader}>
-                              <span className={styles.articleCategory}>{article.category}</span>
-                              <span className={styles.articleDate}>{article.date}</span>
+                              <span className={styles.articleCategory}>{tutorial.category}</span>
+                              <span className={styles.articleDate}>{tutorial.date}</span>
                             </div>
-                            <h3 className={styles.articleTitle}>{article.title}</h3>
-                            <p className={styles.articleExcerpt}>{article.excerpt}</p>
+                            <h3 className={styles.articleTitle}>{tutorial.title}</h3>
+                            <p className={styles.articleExcerpt}>{tutorial.excerpt}</p>
                             <div className={styles.articleFooter}>
                               <div className={styles.articleMeta}>
-                                <span className={styles.articleAuthor}>By {article.author}</span>
-                                <span className={styles.articleReadTime}>{article.readTime}</span>
+                                <span className={styles.articleAuthor}>By {tutorial.author}</span>
+                                <span className={styles.articleReadTime}>{tutorial.readTime}</span>
                               </div>
                               <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                                {currentUserId === article.user_id && (
+                                {currentUserId === tutorial.user_id && (
                                   <Link 
-                                    href={`/resources/edit-article/${article.id}`}
+                                    href={`/resources/edit-article/${tutorial.id}`}
                                     className={styles.editButton}
                                   >
                                     Edit
@@ -330,7 +420,7 @@ export default function ResourcesPage() {
                                 )}
                                 <button 
                                   className={styles.readMoreButton}
-                                  onClick={() => handleReadMore(article.id)}
+                                  onClick={() => handleReadMore(tutorial.id)}
                                 >
                                   Read More
                                 </button>
@@ -339,7 +429,7 @@ export default function ResourcesPage() {
                           </article>
                         ))
                       ) : (
-                        <p className={styles.noResults}>No articles found matching your search.</p>
+                        <p className={styles.noResults}>No tutorials found matching your search.</p>
                       )}
                     </div>
                   </div>
@@ -420,4 +510,3 @@ export default function ResourcesPage() {
     </motion.div>
   );
 }
-
