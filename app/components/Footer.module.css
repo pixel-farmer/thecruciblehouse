@@ -12,10 +12,10 @@
 
 .footerContent {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto auto;
+  justify-content: center;
   gap: 40px;
   align-items: center;
-  margin-bottom: 40px;
 }
 
 .footerLogo {
@@ -59,7 +59,7 @@
 
 .footerSocial {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 20px;
 }
 
