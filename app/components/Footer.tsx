@@ -27,7 +27,7 @@ export default function Footer() {
             <a href="#" aria-label="Facebook">Facebook</a>
             <a href="#" aria-label="Twitter">Twitter</a>
           </div> */}
-          <div className={styles.footerSocial}><a href="#" aria-label="Instagram">Instagram</a></div>
+          <div className={styles.footerSocial}><a href="https://www.instagram.com/thecruciblehouse/" aria-label="Instagram">Instagram</a></div>
         </div>
         <div className={styles.footerBottom}>
           <p>&copy; 2025 The Crucible House. All rights reserved.</p>
