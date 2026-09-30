@@ -93,14 +93,11 @@ The structure is designed to easily accommodate additional artists:
 
 ```
 TheCrucibleHouse/
-├── index.html          # Main HTML file
-├── styles.css          # All styling
-├── script.js           # JavaScript functionality
-├── package.json        # npm dependencies and scripts
-├── .gitignore         # Git ignore file
-├── node_modules/      # npm packages (auto-generated)
-├── CH logo300x300.jpg  # Logo image
-└── README.md           # This file
+├── app/                # Next.js pages and components
+├── public/             # Logo files (logo-dark.svg, logo-light.svg)
+├── site.config.ts      # Brand settings
+├── package.json
+└── README.md
 ```
 
 ## Future Enhancements

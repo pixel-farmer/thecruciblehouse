@@ -20,15 +20,15 @@
 
 .footerLogo {
   display: inline-block;
-  width: auto;
-  height: 80px;
+  width: 250px;
+  height: auto;
   background: transparent;
   line-height: 0;
 }
 
 .footerLogoImg {
-  height: 80px;
-  width: auto;
+  width: 250px;
+  height: auto;
   display: block;
   background: transparent;
   border: none;

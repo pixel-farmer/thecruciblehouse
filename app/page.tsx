@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import styles from './styles/Home.module.css';
 import ScrollAnimation from './components/ScrollAnimation';
+import HeroBackdrop from './components/hero/HeroBackdrop';
+import { siteConfig } from '@/site.config';
 
 interface RecentArtist {
   id: string;
@@ -35,6 +37,8 @@ export default function Home() {
   // Generate particle positions only on client to avoid hydration mismatch
   // Defer particle initialization until after first paint
   useEffect(() => {
+    if (siteConfig.hero.scene !== 'off') return;
+
     const initParticles = () => {
       setParticles(
         Array.from({ length: 25 }).map(() => ({
@@ -118,22 +122,24 @@ export default function Home() {
     >
       <section className={styles.hero}>
         <div className={styles.heatGradient}></div>
-        <div className={styles.particles}>
-          {particles.map((particle, i) => (
-            <div key={i} className={styles.particle} style={{
-              left: `${particle.left}%`,
-              animationDelay: `${particle.delay}s`,
-              animationDuration: `${particle.duration}s`
-            }}></div>
-          ))}
-        </div>
+        <HeroBackdrop />
+        {siteConfig.hero.scene === 'off' && (
+          <div className={styles.particles}>
+            {particles.map((particle, i) => (
+              <div key={i} className={styles.particle} style={{
+                left: `${particle.left}%`,
+                animationDelay: `${particle.delay}s`,
+                animationDuration: `${particle.duration}s`
+              }}></div>
+            ))}
+          </div>
+        )}
         <ScrollAnimation>
           <div className={styles.heroContent}>
-            <h1 className={styles.heroTitle}>The Crucible House</h1>
-            <p className={styles.heroSubtitle}>Where Art and Connections are Forged!</p>
-            <p className={styles.heroTagline}>(AI-Free Zone)</p>
-            <Link href="/artist" className={styles.ctaButton}>
-              View Artists
+            <h1 className={styles.heroTitle}>{siteConfig.hero.title}</h1>
+            <p className={styles.heroSubtitle}>{siteConfig.hero.subtitle}</p>
+            <Link href={siteConfig.hero.ctaHref} className={styles.ctaButton}>
+              {siteConfig.hero.ctaLabel}
             </Link>
           </div>
         </ScrollAnimation>

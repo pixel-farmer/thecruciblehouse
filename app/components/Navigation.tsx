@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
+import { siteConfig } from '@/site.config';
 import ProBadge from './ProBadge';
 import FounderBadge from './FounderBadge';
 import styles from './Navigation.module.css';
@@ -264,10 +265,10 @@ export default function Navigation() {
         <div className={styles.logo}>
           <Link href="/">
             <Image
-              src="/CH logo300.jpg"
-              alt="The Crucible House"
-              width={300}
-              height={85}
+              src={siteConfig.logo.header}
+              alt={siteConfig.logo.alt}
+              width={500}
+              height={120}
               className={styles.logoImg}
               priority
             />

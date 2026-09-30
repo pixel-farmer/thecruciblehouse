@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import { Playfair_Display, Inter } from 'next/font/google';
+import { Playfair_Display, Inter, Outfit } from 'next/font/google';
 import './styles/globals.css';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import { Providers } from './providers';
 import VisitorTracker from './components/VisitorTracker';
+import { siteConfig } from '@/site.config';
 
 const playfair = Playfair_Display({
   subsets: ['latin'],
@@ -18,9 +19,15 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['400'],
+  variable: '--font-outfit',
+});
+
 export const metadata: Metadata = {
-  title: 'The Crucible House | Where Art and Connections are Forged',
-  description: 'The Crucible House - Where Art and Connections are Forged',
+  title: `${siteConfig.name} | ${siteConfig.tagline}`,
+  description: siteConfig.description,
 };
 
 export default function RootLayout({
@@ -29,7 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${inter.variable} ${outfit.variable}`}>
       <body>
         <Navigation />
         <Providers>
