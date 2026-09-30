@@ -842,6 +842,31 @@
   transform: none;
 }
 
+.deleteAccountButton {
+  padding: 10px 20px;
+  background-color: #dc3545;
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-family: var(--font-inter);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  min-height: 38px;
+}
+
+.deleteAccountButton:hover:not(:disabled) {
+  background-color: #c82333;
+  transform: translateY(-1px);
+}
+
+.deleteAccountButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Mobile Responsive */
 @media (max-width: 1024px) {
   .profileLayout {

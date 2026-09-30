@@ -66,6 +66,7 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [bioText, setBioText] = useState('');
@@ -398,6 +399,46 @@ export default function EditProfilePage() {
       setError(error.message || 'Failed to save profile. Please try again.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDeleting || isSaving) return;
+
+    const confirmed = window.confirm(
+      'Delete your account? Your profile, artwork, and posts will be removed. This cannot be undone.'
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    setError(null);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError('You must be logged in to delete your account.');
+        setIsDeleting(false);
+        return;
+      }
+
+      const response = await fetch('/api/account/delete', {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete account.');
+      }
+
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (deleteError: any) {
+      console.error('Error deleting account:', deleteError);
+      setError(deleteError.message || 'Failed to delete account. Please try again.');
+      setIsDeleting(false);
     }
   };
 
@@ -878,16 +919,24 @@ export default function EditProfilePage() {
                     type="button"
                     onClick={() => router.push('/profile')}
                     className={styles.cancelButton}
-                    disabled={isSaving}
+                    disabled={isSaving || isDeleting}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     className={styles.saveButton}
-                    disabled={isSaving}
+                    disabled={isSaving || isDeleting}
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className={styles.deleteAccountButton}
+                    disabled={isSaving || isDeleting}
+                  >
+                    {isDeleting ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </form>
