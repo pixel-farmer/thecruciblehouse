@@ -33,7 +33,7 @@ export default function GuidelinesPage() {
                 marginBottom: '8px',
                 textAlign: 'left'
               }}>
-                Welcome to The Crucible House!
+                Welcome to The Community!
               </strong>
               <p style={{
                 fontSize: '1.1rem',
@@ -206,7 +206,7 @@ export default function GuidelinesPage() {
                 marginBottom: '25px',
                 textAlign: 'left'
               }}>
-                By joining The Crucible House, you agree to these guidelines and to treating fellow artists with the respect you'd like to receive.
+                By joining The Community, you agree to these guidelines and to treating fellow artists with the respect you'd like to receive.
               </p>
               <p style={{
                 fontSize: '1.1rem',
