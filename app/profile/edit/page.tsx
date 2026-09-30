@@ -936,7 +936,7 @@ export default function EditProfilePage() {
                     className={styles.deleteAccountButton}
                     disabled={isSaving || isDeleting}
                   >
-                    {isDeleting ? 'Deleting...' : 'Delete'}
+                    {isDeleting ? 'Deleting...' : 'Delete Account'}
                   </button>
                 </div>
               </form>
