@@ -6,9 +6,9 @@ import { siteConfig, type HeroSceneId } from '@/site.config';
 import styles from '../../styles/Home.module.css';
 
 const sceneLoaders: Record<Exclude<HeroSceneId, 'off'>, ComponentType> = {
-  orbs: dynamic(() => import('./scenes/OrbsScene'), { ssr: false }),
   waves: dynamic(() => import('./scenes/WavesScene'), { ssr: false }),
   grid: dynamic(() => import('./scenes/GridScene'), { ssr: false }),
+  molten: dynamic(() => import('./scenes/MoltenScene'), { ssr: false }),
 };
 
 export default function HeroBackdrop() {

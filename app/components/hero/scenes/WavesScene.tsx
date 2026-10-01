@@ -39,7 +39,7 @@ export default function WavesScene() {
       camera={{ position: [0, 0.4, 4.5], fov: 45 }}
       gl={{ alpha: true, antialias: true }}
     >
-      <ambientLight intensity={0.9} />
+      <ambientLight intensity={2.0} />
       <Waves />
     </Canvas>
   );
