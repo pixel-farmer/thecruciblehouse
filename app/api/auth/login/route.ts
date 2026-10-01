@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSession, verifyPassword, hashPassword } from '@/app/lib/auth';
+import { createSession, verifyPassword } from '@/app/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,24 +12,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if ADMIN_PASSWORD_HASH is set in environment
-    const ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
-    
-    let isValid = false;
-
-    if (ADMIN_PASSWORD_HASH) {
-      // Verify against stored hash
-      isValid = await verifyPassword(password, ADMIN_PASSWORD_HASH);
-    } else {
-      // Fallback: Use plain text password from env (for development only)
-      // In production, always use ADMIN_PASSWORD_HASH
-      const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'B1@ckOut';
-      isValid = password === ADMIN_PASSWORD;
-      
-      if (!ADMIN_PASSWORD) {
-        console.warn('⚠️  Warning: Using default password. Set ADMIN_PASSWORD_HASH in production!');
-      }
+    const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    if (!adminPasswordHash) {
+      console.error('ADMIN_PASSWORD_HASH is not set');
+      return NextResponse.json(
+        { error: 'Admin login is not configured' },
+        { status: 500 }
+      );
     }
+
+    const isValid = await verifyPassword(password, adminPasswordHash);
 
     if (!isValid) {
       return NextResponse.json(

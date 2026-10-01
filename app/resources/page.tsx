@@ -393,15 +393,6 @@ export default function ResourcesPage() {
                       <p className={styles.readingAuthor}>by Rick Rubin</p>
                     </Link>
                     <Link 
-                      href="https://amzn.to/4qcZGO0" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.readingItem}
-                    >
-                      <h5 className={styles.readingTitle}>The Boy, the Mole, the Fox and the Horse</h5>
-                      <p className={styles.readingAuthor}>by Charlie Mackesy</p>
-                    </Link>
-                    <Link 
                       href="https://amzn.to/44vC1Qr" 
                       target="_blank" 
                       rel="noopener noreferrer"

@@ -12,9 +12,8 @@ You need to set up the following environment variables:
    - Generate one using: `openssl rand -base64 32`
    - Or use any long random string
 
-2. **ADMIN_PASSWORD_HASH** (Recommended) - A bcrypt hash of your admin password
+2. **ADMIN_PASSWORD_HASH** - A bcrypt hash of your admin password
    - Generate using the script: `node scripts/generate-password-hash.js`
-   - Or use plain text **ADMIN_PASSWORD** (development only, not recommended for production)
 
 ### Setting Up on Vercel
 
@@ -25,13 +24,6 @@ You need to set up the following environment variables:
    ```
    AUTH_SECRET=your-random-secret-string-here
    ADMIN_PASSWORD_HASH=your-bcrypt-hash-here
-   ```
-
-   Or for development (not recommended for production):
-
-   ```
-   AUTH_SECRET=your-random-secret-string-here
-   ADMIN_PASSWORD=your-plain-text-password-here
    ```
 
 ### Generating a Password Hash
@@ -72,15 +64,14 @@ Visitor data is stored in `data/visitors.json`. This file is automatically creat
 
 - **Never commit** `.env.local` or `data/` directory to version control
 - Use strong, unique passwords
-- In production, always use `ADMIN_PASSWORD_HASH` (bcrypt hash) instead of plain text password
-- Change the default password immediately
+- Store only the bcrypt hash in `ADMIN_PASSWORD_HASH`. Do not put the password itself in the environment.
 - The `data/` directory is included in `.gitignore` by default
 
 ## Troubleshooting
 
 ### Can't log in
 - Verify `AUTH_SECRET` is set
-- Verify `ADMIN_PASSWORD_HASH` or `ADMIN_PASSWORD` is set correctly
+- Verify `ADMIN_PASSWORD_HASH` is set correctly
 - Check browser console for errors
 
 ### Visitor tracking not working
