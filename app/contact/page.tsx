@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import styles from '../styles/Contact.module.css';
 import ScrollAnimation from '../components/ScrollAnimation';
+import { siteConfig } from '@/site.config';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -43,16 +44,13 @@ export default function ContactPage() {
             <div className={styles.contactInfo}>
             <h3>Get In Touch</h3>
             <p>
-              For inquiries about artwork, exhibitions, or general information, 
-              please reach out to us.
+              Questions about membership, events, or the community? Send a note and we will get back to you.
             </p>
             <div className={styles.contactDetails}>
-              <p><strong>Email:</strong> <a href="mailto:info@thecruciblehouse.com">info@thecruciblehouse.com</a></p>
+              <p><strong>Email:</strong> <a href={`mailto:${siteConfig.contactEmail}`}>{siteConfig.contactEmail}</a></p>
               <p><strong>Follow Us:</strong></p>
               <div className={styles.socialLinks}>
-                <a href="#" className={styles.socialLink} aria-label="Instagram">Instagram</a>
-                <a href="#" className={styles.socialLink} aria-label="Facebook">Facebook</a>
-                <a href="#" className={styles.socialLink} aria-label="Twitter">Twitter</a>
+                <a href={siteConfig.social.instagram} className={styles.socialLink} aria-label="Instagram" target="_blank" rel="noopener noreferrer">Instagram</a>
               </div>
             </div>
           </div>

@@ -26,10 +26,7 @@ export default function SignUpPage() {
     }
 
     try {
-      // Determine the redirect URL based on environment
-      const redirectUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/` 
-        : 'https://thecruciblehouse.com/';
+      const redirectUrl = `${window.location.origin}/`;
       
       const { data, error } = await supabase.auth.signUp({
         email,

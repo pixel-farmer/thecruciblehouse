@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { 
             error: 'Storage bucket not configured. Please create "profile-images" bucket in Supabase Storage.',
-            details: 'See SUPABASE_PROFILE_STORAGE_SETUP.md for instructions'
+            details: 'Run supabase/setup.sql in the Supabase SQL Editor.'
           },
           { status: 500 }
         );

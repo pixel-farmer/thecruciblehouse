@@ -4,7 +4,6 @@ import './styles/globals.css';
 import Navigation from './components/Navigation';
 import Footer from './components/Footer';
 import { Providers } from './providers';
-import VisitorTracker from './components/VisitorTracker';
 import { siteConfig } from '@/site.config';
 
 const playfair = Playfair_Display({
@@ -43,7 +42,6 @@ export default function RootLayout({
           {children}
         </Providers>
         <Footer />
-        <VisitorTracker />
       </body>
     </html>
   );

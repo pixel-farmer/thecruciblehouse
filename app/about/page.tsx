@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import styles from '../styles/About.module.css';
 import ScrollAnimation from '../components/ScrollAnimation';
+import { siteConfig } from '@/site.config';
 
 export default function AboutPage() {
   return (
@@ -18,20 +19,15 @@ export default function AboutPage() {
             <div className={styles.aboutText}>
               <h2 className={styles.sectionTitle}>About</h2>
               <p>
-                Welcome to The Crucible House, a contemporary art gallery dedicated to showcasing 
-                exceptional works of art. We celebrate the transformative power of creativity and 
-                the artistic journey.
+                Welcome to {siteConfig.name}. This is a home for people who want to share work,
+                find opportunities, and spend time together.
               </p>
               <p>
-                Our gallery serves as a space where art and connections are forged—where ideas, techniques, and 
-                vision come together to create something extraordinary. We are committed to 
-                presenting thought-provoking and visually striking artwork that resonates with 
-                collectors and art enthusiasts alike.
+                Members can show their work, join conversations, and discover commissions,
+                open calls, and events.
               </p>
               <p>
-                In addition to our current exhibitions, we look forward to featuring emerging and 
-                established artists in the future, creating a diverse and dynamic collection that 
-                represents the best of contemporary art.
+                Use this page to tell visitors who you are and what this community is for.
               </p>
             </div>
             <div className={styles.aboutImage}>

@@ -3,7 +3,7 @@
  * Change the values here, and replace the logo files in /public.
  * The browser tab icon is app/icon.png. Next.js loads that file on its own.
  *
- * Hero scene options: "off", "orbs", "waves", "grid", "molten".
+ * Hero scene options: "off", "waves", "grid", "molten".
  * "off" keeps Three.js out of the initial page load.
  * To add your own, create a scene component, register it in
  * app/components/hero/HeroBackdrop.tsx, then set hero.scene to its name.

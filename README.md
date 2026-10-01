@@ -1,129 +1,109 @@
-# The Crucible House - Art Gallery Website
+# Community site template
 
-A modern, elegant art gallery website showcasing artwork with a clean, sophisticated design inspired by contemporary art galleries.
+A Next.js site for an artist or member community: profiles, artwork, commissions, open calls, groups, meetups, articles, and an optional paid membership. Branding lives in one config file.
 
-## Features
+## Requirements
 
-- **Responsive Design**: Works beautifully on desktop, tablet, and mobile devices
-- **Gallery Section**: Filterable gallery with categories (All, Recent, Series, Archive)
-- **Featured Works**: Highlight your best pieces on the homepage
-- **About Section**: Tell your story and share your artistic vision
-- **Contact Form**: Easy way for visitors to get in touch
-- **Smooth Animations**: Subtle scroll effects and transitions
-- **Lightbox**: Click any artwork to view it in full-screen detail
+- Node.js 20 or newer
+- A [Supabase](https://supabase.com) project
+- A [Stripe](https://stripe.com) account if you want paid membership or artwork checkout
+- A Google Maps API key if you want the community map and location search
 
-## Getting Started
+## Install
 
-### Prerequisites
-
-- Node.js (v14 or higher) and npm installed on your system
-- Download from [nodejs.org](https://nodejs.org/)
-
-### Installation
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   
-   This will automatically open your browser at `http://localhost:3000`
-
-### Available Scripts
-
-- `npm run dev` or `npm start` - Starts a local development server with live reload (components load dynamically)
-- `npm run build` - Inlines navigation and footer components into all HTML files (for static deployment)
-
-### Quick Start (Without npm)
-
-If you prefer not to use npm, you can simply:
-1. Open `index.html` in your web browser
-2. The website will work, but without live reload functionality
-
-## Customization
-
-### Adding Your Artwork
-
-Replace the placeholder divs with actual images:
-
-```html
-<!-- Instead of this: -->
-<div class="gallery-image-placeholder">
-    <span>Artwork</span>
-</div>
-
-<!-- Use this: -->
-<img src="path/to/your/artwork.jpg" alt="Artwork Title" class="gallery-image">
+```bash
+npm install
+cp .env.example .env.local
 ```
 
-### Updating Content
+On Windows PowerShell, copy the example file with:
 
-- **Hero Section**: Edit the title and subtitle in the `#home` section
-- **About Section**: Update the text in the `#about` section with your bio
-- **Contact Info**: Change email and social media links in the `#contact` section
-- **Featured Works**: Update titles and details in the `#featured` section
-
-### Styling
-
-The color scheme can be customized in `styles.css` using CSS variables:
-
-```css
-:root {
-    --primary-color: #1a1a1a;      /* Main text/background */
-    --secondary-color: #f5f5f5;    /* Light backgrounds */
-    --accent-color: #d4af37;       /* Accent/gold color */
-    --text-dark: #2c2c2c;          /* Dark text */
-    --text-light: #666;            /* Light text */
-}
+```powershell
+Copy-Item .env.example .env.local
 ```
 
-### Adding More Artists
+Fill in `.env.local`, then start the site:
 
-The structure is designed to easily accommodate additional artists:
-
-1. Create new sections for each artist
-2. Add navigation links as needed
-3. Consider adding an "Artists" dropdown menu in the future
-
-## File Structure
-
-```
-TheCrucibleHouse/
-├── app/                # Next.js pages and components
-├── public/             # Logo files (logo-dark.svg, logo-light.svg)
-├── site.config.ts      # Brand settings
-├── package.json
-└── README.md
+```bash
+npm run dev
 ```
 
-## Future Enhancements
+Open `http://localhost:3000`. Restart the dev server after you change environment variables.
 
-- Backend integration for contact form submissions
-- Database integration for artwork management
-- E-commerce functionality for artwork sales
-- Artist profiles page for multiple artists
-- Blog/news section
-- Newsletter signup functionality
+`NEXT_PUBLIC_` values are baked in at build time. After you change them on a host such as Vercel, redeploy.
 
-## Browser Support
+## Branding
 
-Works on all modern browsers:
-- Chrome
-- Firefox
-- Safari
-- Edge
+Edit `site.config.ts` for the site name, tagline, contact email, Instagram URL, and homepage headline.
 
-## Notes
+| File | Use |
+| --- | --- |
+| `public/logo-dark.svg` | Header logo on the light background |
+| `public/logo-light.svg` | Footer logo on the dark background |
+| `app/icon.png` | Browser tab icon |
 
-- The contact form currently shows an alert on submission. You'll need to connect it to a backend service (like Formspree, Netlify Forms, or your own server) to actually send emails.
-- Social media links are placeholders - update them with your actual profiles.
-- Image placeholders will need to be replaced with your actual artwork images.
+Logos display at 250px wide. Colors are the variables at the top of `app/styles/globals.css`.
 
-## Credits
+### Homepage background
 
-Design inspired by contemporary art galleries like Porterhouse Fine Art Editions.
+`hero.scene` in `site.config.ts` can be `"off"`, `"waves"`, `"grid"`, or `"molten"`. `"off"` leaves the homepage on the plain light background. To add your own scene, put a component in `app/components/hero/scenes/`, register it in `app/components/hero/HeroBackdrop.tsx`, and set `hero.scene` to that name.
 
+## Environment variables
+
+Copy the names from `.env.example`. Use your own keys. Do not commit `.env.local`.
+
+| Variable | Where to get it |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page, anon public key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Same page, service role key. Server only. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Cloud. Enable Maps JavaScript API and Places API. |
+| `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID` | Optional custom map style |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe test key starting with `pk_test_` |
+| `STRIPE_SECRET_KEY` | Stripe test key starting with `sk_test_` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret starting with `whsec_` |
+
+On Vercel, mark `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY`, and `STRIPE_WEBHOOK_SECRET` as sensitive. Leave the `NEXT_PUBLIC_` values as normal environment variables.
+
+## Supabase
+
+1. Create a project.
+2. In Authentication → URL configuration, set the Site URL to your local or live address, and add redirect URLs for `http://localhost:3000` and your production domain.
+3. Leave email sign-up enabled.
+
+### Database and storage
+
+In the Supabase SQL Editor, open `supabase/setup.sql`, paste the whole file, and run it once on a new project.
+
+That script creates the tables, row level security, the open-call view counter, message realtime, and three public storage buckets: `artwork`, `profile-images`, and `event-images`. It does not add sample members or artwork.
+
+Do not run it against a database that already has this site’s data. It resets policies to the ones in the file.
+
+## Stripe
+
+Use test keys until you are ready to charge real cards. The app creates a monthly product named Pro Membership at $8. Checkout for priced artwork uses the same secret key.
+
+1. In Stripe, turn Test mode on.
+2. Add the publishable key, secret key, and webhook secret to `.env.local` and to your host.
+3. Create a webhook endpoint pointing at `https://your-domain.com/api/webhooks/stripe`.
+4. Subscribe it to `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`, `customer.created`, `customer.deleted`, and `payment_intent.succeeded`.
+
+Test card: `4242 4242 4242 4242`, any future expiry, any CVC.
+
+The webhook secret from live mode will not verify test events. Create the endpoint while Test mode is on.
+
+## Deploy
+
+Deploy on Vercel with the same environment variables as `.env.local`. Use your own Supabase project and your own Stripe keys. The demo site’s database and keys are not part of this download.
+
+Allow your local and production URLs on the Google Maps key, and add the production URL to the Supabase redirect list.
+
+## License
+
+Use of this template is covered by the commercial license in `LICENSE`. One purchase is for one website. The files may not be resold or shared as a template.
+
+## Scripts
+
+- `npm run dev` starts the local site
+- `npm run build` creates a production build
+- `npm run start` serves that build

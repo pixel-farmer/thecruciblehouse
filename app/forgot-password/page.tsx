@@ -18,10 +18,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      // Determine the redirect URL based on environment
-      const redirectUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/reset-password` 
-        : 'https://thecruciblehouse.com/reset-password';
+      const redirectUrl = `${window.location.origin}/reset-password`;
       
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,

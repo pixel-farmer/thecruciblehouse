@@ -370,40 +370,6 @@ export default function ResourcesPage() {
                 </div>
               </ScrollAnimation>
 
-              <ScrollAnimation>
-                <div className={styles.sidebarSection}>
-                  <h3 className={styles.sidebarTitle}>Recommended Reading</h3>
-                  <div className={styles.readingList}>
-                    <Link 
-                      href="https://amzn.to/48CxSN1" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.readingItem}
-                    >
-                      <h5 className={styles.readingTitle}>The Artist's Way</h5>
-                      <p className={styles.readingAuthor}>by Julia Cameron</p>
-                    </Link>
-                    <Link 
-                      href="https://amzn.to/4pNgawn" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.readingItem}
-                    >
-                      <h5 className={styles.readingTitle}>The Creative Act: A Way of Being</h5>
-                      <p className={styles.readingAuthor}>by Rick Rubin</p>
-                    </Link>
-                    <Link 
-                      href="https://amzn.to/44vC1Qr" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.readingItem}
-                    >
-                      <h5 className={styles.readingTitle}>Artists' Master Series: Color and Light</h5>
-                      <p className={styles.readingAuthor}>by Pickard, Knoff, Guweiz, Fowkes</p>
-                    </Link>
-                  </div>
-                </div>
-              </ScrollAnimation>
             </aside>
           </div>
         </div>
